@@ -75,7 +75,7 @@ BOARD_PROFILES = {
         "merged_filename": "rnodethv4_firmware.bin",
         "flash_size":      "16MB",
         "baud_rate":       "921600",
-        "flash_mode":      "qio",    # V4 flash chips support QIO reliably
+        "flash_mode":      "dio",    # DIO is universally compatible with all flash chips
     },
     "v3": {
         "name":            "Heltec WiFi LoRa 32 V3",
@@ -317,17 +317,25 @@ def detect_board(port, esptool_cmd):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def find_esptool():
-    """Find esptool.py — pip-installed, bundled, or PlatformIO's copy.
+    """Find esptool — pip-installed, user-local, bundled, or PlatformIO's copy.
 
-    Prefer pip-installed esptool first (handles its own deps), then fall
-    back to the bundled script — but only if pyserial is importable in
-    the current Python interpreter.
+    Prefer pip/pipx-installed esptool first (handles its own deps and is
+    usually the newest version), then fall back to the bundled script.
     """
-    # 1. pip-installed esptool (standalone executable, no dep issues)
+    # 1. pip-installed esptool on PATH
     if shutil.which("esptool.py"):
         return ["esptool.py"]
     if shutil.which("esptool"):
         return ["esptool"]
+
+    # 2. Common user-local install locations (pip install --user)
+    for candidate in [
+        os.path.expanduser("~/.local/bin/esptool"),
+        os.path.expanduser("~/.local/bin/esptool.py"),
+    ]:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            print(f"  Found user-local esptool: {candidate}")
+            return [candidate]
 
     # Check if pyserial is available before using script-based esptool
     try:
@@ -1235,24 +1243,23 @@ Examples:
     #
     # Strategy:
     #   1. Flash with the board's default flash mode
-    #   2. If this is a full/erase flash, always add --verify
+    #   2. If this is a full flash (any path), always add --verify
     #   3. After successful flash+verify, monitor serial for bootloop
     #   4. If bootloop detected and current mode != DIO, auto-retry with DIO
     #
-    full_flash_verify = args.full or args.erase
     current_mode = BOARD_FLASH_MODE()
 
     ok = flash_firmware(firmware_path, port, esptool_cmd, baud,
                         no_reset_before=erase_performed,
-                        verify=full_flash_verify)
+                        verify=full_flash)
 
     if not ok:
         print("\nFlash FAILED. Check connection and try again.")
         print("You may need to hold BOOT while pressing RESET.")
         sys.exit(1)
 
-    # ── Post-flash boot monitoring (only on full/erase flashes) ─────────────
-    if full_flash_verify:
+    # ── Post-flash boot monitoring (on any full flash) ──────────────────────
+    if full_flash:
         print("\n  Verifying device boots correctly...")
         time.sleep(2)  # Give device time to start booting
         boot_ok, boot_output = _monitor_boot(port, timeout=8)
