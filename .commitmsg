@@ -1,0 +1,17 @@
+Fix V3 bootloop: DIO flash mode, auto-verify, boot monitoring
+
+- V3 board profile defaults to DIO flash mode (QIO fails on some flash chips)
+- flash.py: auto-verify on --erase/--full, post-flash boot monitoring with
+  auto-DIO retry on bootloop detection
+- flash.py: erase keeps device in download mode (--after no_reset) to prevent
+  race condition on re-entry
+- flash.py: remove --dio/--verify flags (now automatic), hidden --flash-mode
+  for power users
+- RNode_Firmware.ino: release BT memory (~70KB) on V3 boundary where BT is
+  compile-time disabled
+- RNode_Firmware.ino: add WDT resets throughout setup() to prevent timeout
+  during long init sequences
+- RNode_Firmware.ino: fix while-not-Serial blocking on V3 (no USB-CDC)
+- RNode_Firmware.ino: init bt_devname from WiFi MAC when BT disabled
+- RNode_Firmware.ino: bootloop detection via RTC_NOINIT_ATTR -- forces config
+  portal after 5 rapid reboots

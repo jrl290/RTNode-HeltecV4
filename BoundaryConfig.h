@@ -39,20 +39,25 @@ bool boundary_needs_config();
 
 // ─── Common bandwidth values (Hz) ───────────────────────────────────────────
 // These match Reticulum standard channel plans
-struct BwOption { uint32_t hz; const char* label; };
-static const BwOption BW_OPTIONS[] = {
-    {  7800, "7.8 kHz"   },
-    { 10400, "10.4 kHz"  },
-    { 15600, "15.6 kHz"  },
-    { 20800, "20.8 kHz"  },
-    { 31250, "31.25 kHz" },
-    { 41700, "41.7 kHz"  },
-    { 62500, "62.5 kHz"  },
-    {125000, "125 kHz"   },
-    {250000, "250 kHz"   },
-    {500000, "500 kHz"   },
+// Stored in flash (PROGMEM) to save ~200 bytes of RAM
+static const uint32_t BW_OPTIONS_HZ[] PROGMEM = {
+    7800, 10400, 15600, 20800, 31250, 41700, 62500, 125000, 250000, 500000,
 };
-static const int BW_OPTIONS_COUNT = sizeof(BW_OPTIONS) / sizeof(BW_OPTIONS[0]);
+static const char BW_LABEL_0[]  PROGMEM = "7.8 kHz";
+static const char BW_LABEL_1[]  PROGMEM = "10.4 kHz";
+static const char BW_LABEL_2[]  PROGMEM = "15.6 kHz";
+static const char BW_LABEL_3[]  PROGMEM = "20.8 kHz";
+static const char BW_LABEL_4[]  PROGMEM = "31.25 kHz";
+static const char BW_LABEL_5[]  PROGMEM = "41.7 kHz";
+static const char BW_LABEL_6[]  PROGMEM = "62.5 kHz";
+static const char BW_LABEL_7[]  PROGMEM = "125 kHz";
+static const char BW_LABEL_8[]  PROGMEM = "250 kHz";
+static const char BW_LABEL_9[]  PROGMEM = "500 kHz";
+static const char* const BW_OPTIONS_LABELS[] PROGMEM = {
+    BW_LABEL_0, BW_LABEL_1, BW_LABEL_2, BW_LABEL_3, BW_LABEL_4,
+    BW_LABEL_5, BW_LABEL_6, BW_LABEL_7, BW_LABEL_8, BW_LABEL_9,
+};
+static const int BW_OPTIONS_COUNT = sizeof(BW_OPTIONS_HZ) / sizeof(BW_OPTIONS_HZ[0]);
 
 // ─── HTML Page Generation ────────────────────────────────────────────────────
 
@@ -202,12 +207,16 @@ static void config_send_html() {
     // Bandwidth — dropdown
     html += F("<label>Bandwidth</label><select name='bw'>");
     for (int i = 0; i < BW_OPTIONS_COUNT; i++) {
+        uint32_t bw_hz = pgm_read_dword(&BW_OPTIONS_HZ[i]);
+        char label_buf[16];
+        strncpy_P(label_buf, (const char*)pgm_read_ptr(&BW_OPTIONS_LABELS[i]), sizeof(label_buf)-1);
+        label_buf[sizeof(label_buf)-1] = '\0';
         html += F("<option value='");
-        html += String(BW_OPTIONS[i].hz);
+        html += String(bw_hz);
         html += "'";
-        if (BW_OPTIONS[i].hz == cur_bw) html += F(" selected");
+        if (bw_hz == cur_bw) html += F(" selected");
         html += ">";
-        html += BW_OPTIONS[i].label;
+        html += label_buf;
         html += F("</option>");
     }
     html += F("</select>");

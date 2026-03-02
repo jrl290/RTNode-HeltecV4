@@ -1887,7 +1887,7 @@ void unlock_rom() {
 
 void init_channel_stats() {
 	#if MCU_VARIANT == MCU_ESP32
-		for (uint16_t ai = 0; ai < DCD_SAMPLES; ai++) { util_samples[ai] = false; }
+		memset(util_samples, 0, DCD_BITFIELD_SIZE);
 		for (uint16_t ai = 0; ai < AIRTIME_BINS; ai++) { airtime_bins[ai] = 0; }
 		for (uint16_t ai = 0; ai < AIRTIME_BINS; ai++) { longterm_bins[ai] = 0.0; }
 		local_channel_util = 0.0;

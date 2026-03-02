@@ -243,6 +243,16 @@ TcpInterface*  local_tcp_interface_ptr = nullptr;
 // RTC memory flag — survives software reset but not power cycle
 RTC_NOINIT_ATTR uint32_t boundary_config_request;
 #define BOUNDARY_CONFIG_MAGIC 0xC0F19A7E
+
+// Bootloop detection: count rapid reboots in RTC memory.
+// After BOOTLOOP_THRESHOLD consecutive reboots within BOOTLOOP_WINDOW_MS,
+// force entry into the config portal so the user can fix settings.
+#define BOOTLOOP_THRESHOLD   5
+#define BOOTLOOP_WINDOW_MS   120000   // 2 minutes
+#define BOOTLOOP_MAGIC       0xB007100D
+RTC_NOINIT_ATTR uint32_t bootloop_magic;
+RTC_NOINIT_ATTR uint32_t bootloop_count;
+RTC_NOINIT_ATTR uint32_t bootloop_first_boot_ms;
 #endif
 
 #endif  // HAS_RNS
@@ -340,11 +350,11 @@ void setup() {
     boot_seq();
   #endif
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_HELTEC_T114 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_HELTEC32_V4
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_HELTEC_T114 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_HELTEC32_V4 && BOARD_MODEL != BOARD_HELTEC32_V3
     // Some boards need to wait until the hardware UART is set up before booting
-    // the full firmware. In the case of the RAK4631 and Heltec T114, the line below will wait
-    // until a serial connection is actually established with a master. Thus, it
-    // is disabled on this platform.
+    // the full firmware. In the case of the RAK4631, Heltec T114, and Heltec V3,
+    // the line below will wait until a serial connection is actually established
+    // with a master. Thus, it is disabled on these platforms.
     while (!Serial);
   #endif
 
@@ -475,13 +485,41 @@ void setup() {
     // Load boundary config so the portal can show current/default values
     boundary_load_config();
 
-    // Enter config mode if: first boot with no config, OR button-triggered reboot
+    // ── Bootloop detection ───────────────────────────────────────────────
+    // Track rapid reboots in RTC memory. If the device reboots more than
+    // BOOTLOOP_THRESHOLD times within BOOTLOOP_WINDOW_MS, force the config
+    // portal so the user can fix bad settings.
+    bool bootloop_detected = false;
+    {
+      uint32_t now = millis();
+      if (bootloop_magic != BOOTLOOP_MAGIC) {
+        // First boot or power cycle — initialize counter
+        bootloop_magic = BOOTLOOP_MAGIC;
+        bootloop_count = 1;
+        bootloop_first_boot_ms = now;
+      } else {
+        bootloop_count++;
+        // Check if we're within the time window
+        if (bootloop_count >= BOOTLOOP_THRESHOLD) {
+          Serial.printf("[Boundary] BOOTLOOP DETECTED: %lu reboots — forcing config portal\r\n", bootloop_count);
+          bootloop_detected = true;
+          // Reset counter so next reboot after config portal doesn't re-trigger
+          bootloop_count = 0;
+          bootloop_magic = 0;
+        }
+      }
+    }
+
+    // Enter config mode if: first boot with no config, OR button-triggered reboot,
+    // OR bootloop detected
     bool need_config = boundary_needs_config();
     bool config_requested = (boundary_config_request == BOUNDARY_CONFIG_MAGIC);
     boundary_config_request = 0;  // Clear flag immediately
 
-    if (need_config || config_requested) {
-      if (config_requested) {
+    if (need_config || config_requested || bootloop_detected) {
+      if (bootloop_detected) {
+        Serial.println("[Boundary] Entering config portal due to bootloop recovery");
+      } else if (config_requested) {
         Serial.println("[Boundary] Config mode requested via button hold");
       } else {
         Serial.println("[Boundary] No configuration found — starting config portal");
@@ -515,6 +553,23 @@ void setup() {
         btStop();
         esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
       #endif
+    #else
+      #ifdef BOUNDARY_MODE
+        // Even when BLE/BT are compile-time disabled (e.g. V3 boundary),
+        // the ESP32 BT controller is still loaded. Release its ~70KB of RAM.
+        btStop();
+        esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+        Serial.write("[Boundary] Released BT controller memory\r\n");
+      #endif
+    #endif
+
+    #ifdef BOUNDARY_MODE
+      // Initialize bt_devname for WiFi hostname when BT is disabled
+      if (!bt_init_ran) {
+        uint8_t mac[6];
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        sprintf(bt_devname, "RNode %02X%02X", mac[4], mac[5]);
+      }
     #endif
 
     if (console_active) {
@@ -546,6 +601,11 @@ void setup() {
         else                 { avoid_interference = false; }
       #endif
     #endif
+  #endif
+
+  // Feed WDT before validation + radio start, which may take time
+  #if MCU_VARIANT == MCU_ESP32
+    esp_task_wdt_reset();
   #endif
 
   // Validate board health, EEPROM and config
@@ -584,6 +644,11 @@ void setup() {
 
 #ifdef HAS_RNS
   try {
+    // Feed WDT before filesystem init (may format on first boot)
+    #if MCU_VARIANT == MCU_ESP32
+      esp_task_wdt_reset();
+    #endif
+
     // CBA Init filesystem
 #if defined(RNS_USE_FS)
     filesystem = new FileSystem();
@@ -592,6 +657,11 @@ void setup() {
     filesystem = new NoopFileSystem();
     ((FileSystem*)filesystem.get())->init();
 #endif
+
+    // Feed WDT after filesystem init
+    #if MCU_VARIANT == MCU_ESP32
+      esp_task_wdt_reset();
+    #endif
 
     HEAD("Registering filesystem...", RNS::LOG_TRACE);
     RNS::Utilities::OS::register_filesystem(filesystem);
@@ -630,6 +700,11 @@ void setup() {
 
     // CBA Start RNS
     if (hw_ready) {
+      // Feed WDT before RNS startup (identity generation + crypto can be slow)
+      #if MCU_VARIANT == MCU_ESP32
+        esp_task_wdt_reset();
+      #endif
+
       RNS::setLogCallback(&on_log);
       RNS::Transport::set_receive_packet_callback(on_receive_packet);
       RNS::Transport::set_transmit_packet_callback(on_transmit_packet);
@@ -723,6 +798,11 @@ void setup() {
         }
       }
 #endif
+
+      // Feed WDT before Reticulum instance creation (loads caches, generates keys)
+      #if MCU_VARIANT == MCU_ESP32
+        esp_task_wdt_reset();
+      #endif
 
       HEAD("Creating Reticulum instance...", RNS::LOG_TRACE);
       reticulum = RNS::Reticulum();
@@ -1987,12 +2067,17 @@ void check_modem_status() {
     update_noise_floor();
 
     #if MCU_VARIANT == MCU_ESP32 || MCU_VARIANT == MCU_NRF52
-      util_samples[dcd_sample] = dcd;
+      if (dcd) {
+        util_samples[dcd_sample >> 3] |=  (1 << (dcd_sample & 7));
+      } else {
+        util_samples[dcd_sample >> 3] &= ~(1 << (dcd_sample & 7));
+      }
       dcd_sample = (dcd_sample+1)%DCD_SAMPLES;
       if (dcd_sample % UTIL_UPDATE_INTERVAL == 0) {
         int util_count = 0;
-        for (int ui = 0; ui < DCD_SAMPLES; ui++) {
-          if (util_samples[ui]) util_count++;
+        for (int ui = 0; ui < DCD_BITFIELD_SIZE; ui++) {
+          uint8_t b = util_samples[ui];
+          while (b) { util_count += (b & 1); b >>= 1; }
         }
         local_channel_util = (float)util_count / (float)DCD_SAMPLES;
         total_channel_util = local_channel_util + airtime;
@@ -2239,6 +2324,13 @@ void loop() {
   }
 
 #ifdef BOUNDARY_MODE
+  // ── Clear bootloop counter once we reach a stable loop iteration ──────────
+  if (bootloop_magic == BOOTLOOP_MAGIC) {
+    bootloop_magic = 0;
+    bootloop_count = 0;
+    Serial.println("[Boundary] Boot stable — bootloop counter cleared");
+  }
+
   // ── Heap + WiFi watchdog ───────────────────────────────────────────────────
   // Monitor heap and WiFi health. Auto-reboot on critical conditions:
   //  1) Internal heap drops below 20KB (WiFi needs ~16KB for RX buffers)

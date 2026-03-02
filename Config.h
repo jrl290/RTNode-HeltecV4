@@ -186,7 +186,8 @@
 		#define AIRTIME_LONGTERM_MS (AIRTIME_LONGTERM*1000)
 		#define AIRTIME_BINLEN_MS (STATUS_INTERVAL_MS*DCD_SAMPLES)
 		#define AIRTIME_BINS ((AIRTIME_LONGTERM*1000)/AIRTIME_BINLEN_MS)
-		bool util_samples[DCD_SAMPLES];
+		#define DCD_BITFIELD_SIZE ((DCD_SAMPLES + 7) / 8)
+		uint8_t util_samples[DCD_BITFIELD_SIZE];
 		uint16_t airtime_bins[AIRTIME_BINS];
 		float longterm_bins[AIRTIME_BINS];
 		int dcd_sample = 0;

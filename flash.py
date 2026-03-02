@@ -49,9 +49,12 @@ import time
 
 VERSION         = "1.0.17"
 CHIP            = "esp32s3"
-FLASH_MODE      = "qio"
+FLASH_MODE      = "qio"    # Global default; overridden by board profile
 FLASH_FREQ      = "80m"
 GITHUB_REPO     = "jrl290/RNodeTHV4"
+
+# Runtime state (set automatically during main())
+_flash_mode_override = None   # CLI --flash-mode sets this; otherwise board profile wins
 
 # Flash addresses for ESP32-S3 Arduino framework
 BOOTLOADER_ADDR = 0x0000
@@ -72,6 +75,7 @@ BOARD_PROFILES = {
         "merged_filename": "rnodethv4_firmware.bin",
         "flash_size":      "16MB",
         "baud_rate":       "921600",
+        "flash_mode":      "qio",    # V4 flash chips support QIO reliably
     },
     "v3": {
         "name":            "Heltec WiFi LoRa 32 V3",
@@ -81,6 +85,7 @@ BOARD_PROFILES = {
         "merged_filename": "rnodethv3_firmware.bin",
         "flash_size":      "8MB",
         "baud_rate":       "460800",
+        "flash_mode":      "dio",    # V3 uses DIO — some flash chips do not support QIO
     },
 }
 DEFAULT_BOARD = "v4"
@@ -108,6 +113,13 @@ def FLASH_SIZE():
 
 def BAUD_RATE():
     return board_profile()["baud_rate"]
+
+def BOARD_FLASH_MODE():
+    """Return the effective flash mode for the current board.
+
+    Priority: CLI override > board profile > global default.
+    """
+    return _flash_mode_override or board_profile().get("flash_mode", FLASH_MODE)
 
 def MERGED_FILENAME():
     return board_profile()["merged_filename"]
@@ -563,10 +575,12 @@ def _do_merge(output_path, esptool_cmd, bootloader, partitions, boot_app0, firmw
     print(f"  boot_app0:  {boot_app0}   @ 0x{BOOT_APP0_ADDR:04x}")
     print(f"  Firmware:   {firmware}    @ 0x{APP_ADDR:05x}")
 
+    flash_mode = BOARD_FLASH_MODE()
+    print(f"  Flash mode: {flash_mode.upper()}")
     cmd = esptool_cmd + [
         "--chip", CHIP,
         "merge_bin",
-        "--flash_mode", FLASH_MODE,
+        "--flash_mode", flash_mode,
         "--flash_freq", FLASH_FREQ,
         "--flash_size", FLASH_SIZE(),
         "-o", output_path,
@@ -800,13 +814,24 @@ def reset_to_bootloader(port):
     return True
 
 
-def flash_firmware(firmware_path, port, esptool_cmd, baud=None):
-    """Flash firmware to the device."""
+def flash_firmware(firmware_path, port, esptool_cmd, baud=None,
+                   no_reset_before=False, verify=False,
+                   flash_mode=None, no_hard_reset=False):
+    """Flash firmware to the device.
+
+    Args:
+        no_reset_before: If True, use ``--before no_reset`` so we don't try to
+            re-enter download mode (device is already in stub after erase).
+        verify: If True, add ``--verify`` for read-back verification.
+        flash_mode: Override flash mode (default: board profile).
+        no_hard_reset: If True, use ``--after no_reset`` to keep device in stub.
+    """
     if baud is None:
         baud = BAUD_RATE()
     flash_size = FLASH_SIZE()
+    mode = flash_mode or BOARD_FLASH_MODE()
     print(f"\nFlashing {firmware_path} to {port}...")
-    print(f"  Chip: {CHIP}  Baud: {baud}  Flash: {flash_size}\n")
+    print(f"  Chip: {CHIP}  Baud: {baud}  Flash: {flash_size}  Mode: {mode.upper()}\n")
 
     # Determine if this is a merged binary (flash at 0x0) or app-only (flash at 0x10000)
     is_merged = is_merged_binary(firmware_path)
@@ -818,23 +843,81 @@ def flash_firmware(firmware_path, port, esptool_cmd, baud=None):
         flash_addr = f"0x{APP_ADDR:x}"
         print(f"  Detected: app-only binary -> flash at {flash_addr}")
 
+    before_arg = "no_reset" if no_reset_before else "default_reset"
+    after_arg  = "no_reset" if no_hard_reset else "hard_reset"
+
     cmd = esptool_cmd + [
         "--chip", CHIP,
         "--port", port,
         "--baud", baud,
-        "--before", "default_reset",
-        "--after", "hard_reset",
+        "--before", before_arg,
+        "--after", after_arg,
         "write_flash",
         "-z",
-        "--flash_mode", FLASH_MODE,
+        "--flash_mode", mode,
         "--flash_freq", FLASH_FREQ,
         "--flash_size", flash_size,
-        flash_addr, firmware_path,
     ]
+    if verify:
+        cmd.append("--verify")
+    cmd += [flash_addr, firmware_path]
 
     print("Running: " + " ".join(cmd[-8:]))
     result = subprocess.run(cmd)
     return result.returncode == 0
+
+
+def _monitor_boot(port, timeout=8):
+    """Open serial port and watch for boot errors for `timeout` seconds.
+
+    Returns:
+        (True,  output)  — device appears to be booting normally
+        (False, output)  — bootloop detected (ets_loader.c / repeated resets)
+        (None,  reason)  — could not open serial port
+    """
+    try:
+        import serial as pyserial
+    except ImportError:
+        return None, "pyserial not installed — skipping boot check"
+
+    try:
+        ser = pyserial.Serial(port, 115200, timeout=1)
+    except Exception as e:
+        return None, f"Could not open {port}: {e}"
+
+    print(f"\n  Monitoring boot on {port} for {timeout}s...")
+    output = ""
+    reset_count = 0
+    deadline = time.time() + timeout
+    try:
+        while time.time() < deadline:
+            raw = ser.read(ser.in_waiting or 1)
+            if raw:
+                text = raw.decode("utf-8", errors="replace")
+                output += text
+                # Count ROM reset lines — 2+ means bootloop
+                reset_count += text.count("ets_loader.c")
+                if reset_count >= 2:
+                    ser.close()
+                    return False, output
+                # Any application output means boot succeeded
+                if "[Boundary]" in output or "RNode" in output or "WiFi" in output:
+                    ser.close()
+                    return True, output
+    except Exception:
+        pass
+    finally:
+        try:
+            ser.close()
+        except Exception:
+            pass
+
+    # If we got reset output but only once, device may still be trying to boot
+    if reset_count >= 1 and ("ets_loader.c" in output):
+        return False, output
+
+    # No clear signal — assume OK (normal if serial takes time)
+    return True, output
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -854,7 +937,7 @@ Examples:
   python flash.py --file firmware.bin     # Flash a specific file
   python flash.py --merge-only            # Build merged binary for release
   python flash.py --port /dev/ttyACM0     # Specify serial port
-  python flash.py --erase --full          # Erase flash, then full flash
+  python flash.py --erase                  # Erase flash, then full flash (auto-verify)
         """,
     )
     parser.add_argument("--board", choices=["v3", "v4"], default=None,
@@ -873,6 +956,9 @@ Examples:
                         help="Flash merged binary (bootloader + partitions + app) — overwrites everything")
     parser.add_argument("--erase", action="store_true",
                         help="Erase entire flash before writing (implies --full)")
+    # Power-user override (not shown in --help)
+    parser.add_argument("--flash-mode", default=None,
+                        help=argparse.SUPPRESS)
 
     args = parser.parse_args()
 
@@ -932,6 +1018,14 @@ Examples:
     # --erase implies --full (after erase, device needs bootloader + partitions)
     if args.erase:
         args.full = True
+
+    # Apply flash mode override (hidden --flash-mode flag for power users)
+    global _flash_mode_override
+    if args.flash_mode:
+        _flash_mode_override = args.flash_mode
+
+    print(f"  Flash mode: {BOARD_FLASH_MODE().upper()}"
+          + (" (override)" if _flash_mode_override else " (board default)"))
 
     # Determine firmware file
     firmware_path = None
@@ -1116,34 +1210,132 @@ Examples:
         sys.exit(0)
 
     # ── Erase flash (only when --erase was explicitly passed) ───────────────
+    erase_performed = False
     if args.erase:
         print(f"\nErasing flash on {port}...")
+        # Use --after no_reset so the device stays in the esptool stub after
+        # erasing. This avoids exiting download mode (which would require
+        # DTR/RTS re-entry and can fail on some USB-UART bridges).
         erase_cmd = esptool_cmd + [
             "--chip", CHIP,
             "--port", port,
             "--baud", baud,
+            "--after", "no_reset",
             "erase_flash",
         ]
         result = subprocess.run(erase_cmd)
         if result.returncode != 0:
             print("\nErase FAILED.")
             sys.exit(1)
-        print("Flash erased. Waiting for device to re-enumerate...")
-        time.sleep(3)
+        erase_performed = True
+        print("Flash erased (device still in download mode).")
+        time.sleep(1)   # brief settle
 
-    if flash_firmware(firmware_path, port, esptool_cmd, baud):
-        print()
-        print("╔══════════════════════════════════════════╗")
-        print("║          Flash complete!                 ║")
-        print("║  Device will reboot automatically.       ║")
-        print("║                                          ║")
-        print("║  On first boot, hold PRG > 5s to enter   ║")
-        print("║  the configuration portal.               ║")
-        print("╚══════════════════════════════════════════╝")
-    else:
+    # ── Flash + auto-verify + boot-check + auto-retry ───────────────────────
+    #
+    # Strategy:
+    #   1. Flash with the board's default flash mode
+    #   2. If this is a full/erase flash, always add --verify
+    #   3. After successful flash+verify, monitor serial for bootloop
+    #   4. If bootloop detected and current mode != DIO, auto-retry with DIO
+    #
+    full_flash_verify = args.full or args.erase
+    current_mode = BOARD_FLASH_MODE()
+
+    ok = flash_firmware(firmware_path, port, esptool_cmd, baud,
+                        no_reset_before=erase_performed,
+                        verify=full_flash_verify)
+
+    if not ok:
         print("\nFlash FAILED. Check connection and try again.")
         print("You may need to hold BOOT while pressing RESET.")
         sys.exit(1)
+
+    # ── Post-flash boot monitoring (only on full/erase flashes) ─────────────
+    if full_flash_verify:
+        print("\n  Verifying device boots correctly...")
+        time.sleep(2)  # Give device time to start booting
+        boot_ok, boot_output = _monitor_boot(port, timeout=8)
+
+        if boot_ok is None:
+            # Couldn't open serial — not fatal, just warn
+            print(f"  ⚠  {boot_output}")
+            print("  Cannot verify boot — check device manually")
+        elif boot_ok:
+            print("  ✓ Device is booting normally")
+        else:
+            # Bootloop detected!
+            print("\n  ✗ BOOTLOOP DETECTED — device is not booting properly")
+            if boot_output:
+                # Show the first few relevant lines
+                for line in boot_output.splitlines()[:8]:
+                    line = line.strip()
+                    if line:
+                        print(f"    {line}")
+
+            if current_mode != "dio":
+                print(f"\n  Current flash mode is {current_mode.upper()} — retrying with DIO...")
+                print("  (DIO is more compatible with all flash chip variants)")
+
+                # Need to re-enter download mode: reset via 1200 baud
+                print("  Resetting device to download mode...")
+                reset_to_bootloader(port)
+                time.sleep(3)
+                new_port = args.port or find_serial_port()
+                if new_port:
+                    port = new_port
+
+                # Re-erase if we erased before (flash is garbage after bootloop)
+                if args.erase:
+                    print(f"\n  Re-erasing flash on {port}...")
+                    erase_cmd = esptool_cmd + [
+                        "--chip", CHIP,
+                        "--port", port,
+                        "--baud", baud,
+                        "--after", "no_reset",
+                        "erase_flash",
+                    ]
+                    result = subprocess.run(erase_cmd)
+                    if result.returncode != 0:
+                        print("\n  Re-erase FAILED.")
+                        sys.exit(1)
+                    erase_performed = True
+                    time.sleep(1)
+
+                ok = flash_firmware(firmware_path, port, esptool_cmd, baud,
+                                    no_reset_before=erase_performed,
+                                    verify=True, flash_mode="dio")
+
+                if not ok:
+                    print("\n  DIO retry FAILED.")
+                    sys.exit(1)
+
+                # Check boot again
+                time.sleep(2)
+                boot_ok2, boot_output2 = _monitor_boot(port, timeout=8)
+                if boot_ok2 is False:
+                    print("\n  ✗ Still bootlooping after DIO retry.")
+                    print("  This may be a hardware issue. Check connections and try a different USB cable.")
+                    sys.exit(1)
+                elif boot_ok2:
+                    print("  ✓ Device is booting normally with DIO mode!")
+                else:
+                    print(f"  ⚠  {boot_output2}")
+                    print("  Could not verify boot — check device manually")
+            else:
+                print("\n  Already using DIO mode — this may be a hardware issue.")
+                print("  Try: different USB cable, different port, or reflash the original firmware:")
+                print(f"    python flash.py --erase --board {_board}")
+                sys.exit(1)
+
+    print()
+    print("╔══════════════════════════════════════════╗")
+    print("║          Flash complete!                 ║")
+    print("║  Device will reboot automatically.       ║")
+    print("║                                          ║")
+    print("║  On first boot, hold PRG > 5s to enter   ║")
+    print("║  the configuration portal.               ║")
+    print("╚══════════════════════════════════════════╝")
 
 
 if __name__ == "__main__":

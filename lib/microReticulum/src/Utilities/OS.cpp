@@ -3,7 +3,7 @@
 #include "../Type.h"
 #include "../Log.h"
 
-#if defined(ESP32) && defined(BOARD_HAS_PSRAM)
+#if defined(ESP32)
 #include <esp_heap_caps.h>
 #endif
 
@@ -51,31 +51,30 @@ void* operator new(size_t size) {
 	//if (OS::_tlsf == nullptr) {
 	if (!_tlsf_init) {
 		_tlsf_init = true;
-#if defined(ESP32) && defined(BOARD_HAS_PSRAM)
-		// Use PSRAM for TLSF pool — frees internal SRAM for WiFi/LoRa/stack.
-		// PSRAM is slower (QSPI) but has 2MB vs ~170KB free internal.
-		_contiguous_size = ESP.getMaxAllocPsram();
-		TRACEF("psram contiguous_size: %u", _contiguous_size);
-		if (_buffer_size == 0) {
-			_buffer_size = (_contiguous_size * 4) / 5;
+#if defined(ESP32)
+		// Runtime PSRAM detection — works on boards with or without PSRAM.
+		// Boards with PSRAM (e.g. V4 ESP32-S3FH4R2) get TLSF pool in SPIRAM,
+		// freeing internal SRAM for WiFi/LoRa/stack.
+		// Boards without PSRAM (e.g. V3 ESP32-S3FN8) skip TLSF entirely and
+		// use plain malloc() from internal SRAM — the ~170 KB heap is too small
+		// to dedicate to a TLSF pool while still running WiFi/LoRa/FreeRTOS.
+		size_t psram_size = ESP.getPsramSize();
+		void* raw_buffer = nullptr;
+		if (psram_size > 0) {
+			// PSRAM available — allocate TLSF pool from SPIRAM
+			size_t align = tlsf_align_size();
+			_contiguous_size = ESP.getMaxAllocPsram();
+			TRACEF("PSRAM detected: %u bytes total, %u bytes max contiguous", psram_size, _contiguous_size);
+			if (_buffer_size == 0) {
+				_buffer_size = (_contiguous_size * 4) / 5;
+			}
+			_buffer_size &= ~(align - 1);
+			raw_buffer = heap_caps_aligned_alloc(align, _buffer_size, MALLOC_CAP_SPIRAM);
 		}
-		size_t align = tlsf_align_size();
-		_buffer_size &= ~(align - 1);
-		void* raw_buffer = heap_caps_aligned_alloc(align, _buffer_size, MALLOC_CAP_SPIRAM);
-#elif defined(ESP32)
-		// CBA Still unknown why the call to tlsf_create_with_pool() is so flaky on ESP32 with calculated buffer size. Reuires more research and unit tests.
-		_contiguous_size = ESP.getMaxAllocHeap();
-		TRACEF("contiguous_size: %u", _contiguous_size);
-		if (_buffer_size == 0) {
-			// CBA NOTE Using fp mathhere somehow causes tlsf_create_with_pool() to fail.
-			//_buffer_size = (size_t)(_contiguous_size * BUFFER_FRACTION);
-			// Compute 80% exactly using integers
-			_buffer_size = (_contiguous_size * 4) / 5;
+		else {
+			// No PSRAM — skip TLSF, all allocations go through malloc()
+			TRACEF("No PSRAM detected (%u bytes internal heap free), TLSF disabled", ESP.getFreeHeap());
 		}
-		// Round DOWN to TLSF alignment
-		size_t align = tlsf_align_size();
-		_buffer_size &= ~(align - 1);
-		void* raw_buffer = (void*)aligned_alloc(align, _buffer_size);
 #elif defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_NRF52_ADAFRUIT)
 		_contiguous_size = dbgHeapFree();
 		TRACEF("contiguous_size: %u", _contiguous_size);

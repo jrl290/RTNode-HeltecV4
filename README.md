@@ -28,17 +28,17 @@ Built on [microReticulum](https://github.com/attermann/microReticulum) (a C++ po
 - **Optional local TCP server** — serve local devices on your WiFi in addition to the backbone connection
 - **Automatic reconnection** — WiFi and TCP connections recover from drops with exponential backoff
 - **ESP32 memory-optimized** — table sizes, timeouts, and caching tuned for the constrained MCU environment
-- **Dual board support** — supports both Heltec V3 (8MB flash, 8MB PSRAM) and V4 (16MB flash, 2MB PSRAM) with automatic board detection
+- **Dual board support** — supports both Heltec V3 (8MB flash) and V4 (16MB flash, 2MB PSRAM) with automatic board and PSRAM detection
 
 ## Hardware
 
-Both the **Heltec WiFi LoRa 32 V3** and **V4** are supported. These boards were chosen because they ship with PSRAM and ample flash — enough headroom for the microReticulum transport tables, packet caching to flash storage, and the web-based configuration portal. Many other LoRa dev boards come with only 4 MB flash and no PSRAM, which would require significant compromises to the boundary node's caching and routing capabilities.
+Both the **Heltec WiFi LoRa 32 V3** and **V4** are supported. These boards were chosen for their ample flash and LoRa capabilities. PSRAM availability varies — the V4 ships with 2 MB PSRAM, while the V3 uses the ESP32-S3FN8 which has **no PSRAM**. The firmware **detects PSRAM at runtime** and allocates the TLSF memory pool from SPIRAM when available, falling back to internal SRAM (~170 KB) on boards without PSRAM.
 
 | Component | Heltec V3 | Heltec V4 |
 |-----------|-----------|----------|
-| **MCU** | ESP32-S3 | ESP32-S3 |
+| **MCU** | ESP32-S3 (ESP32-S3FN8) | ESP32-S3 (ESP32-S3FH4R2) |
 | **Flash** | 8 MB | 16 MB |
-| **PSRAM** | 8 MB (QSPI) | 2 MB (QSPI) |
+| **PSRAM** | None | 2 MB (QSPI) |
 | **Radio** | SX1262 | SX1262 + GC1109 PA |
 | **TX Power** | Up to 22 dBm | Up to 28 dBm |
 | **Display** | SSD1306 OLED 128×64 | SSD1306 OLED 128×64 |
