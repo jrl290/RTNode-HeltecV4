@@ -1,6 +1,6 @@
-# RTNode-HeltecV4 — Reticulum Transport Node for Heltec WiFi LoRa 32 V3 / V4
+# RTNode-HeltecV4 — Reticulum Transport Node for Heltec WiFi LoRa 32 V4 (with support for V3)
 
-A custom firmware for the **Heltec WiFi LoRa 32 V3** and **V4** (ESP32-S3 + SX1262) that operates as a **Transport Node** — bridging a local LoRa radio network with a remote TCP/IP backbone (such as [rmap.world](https://rmap.world)) over WiFi.
+A custom firmware for the **Heltec WiFi LoRa 32 V4** (ESP32-S3 + SX1262) that operates as a **Transport Node** — bridging a local LoRa radio network with a remote TCP/IP backbone (such as [rmap.world](https://rmap.world)) over WiFi.
 
 ```
   Android / Sideband                                             Remote
@@ -32,7 +32,7 @@ Built on [microReticulum](https://github.com/attermann/microReticulum) (a C++ po
 
 ## Hardware
 
-Both the **Heltec WiFi LoRa 32 V3** and **V4** are supported. These boards were chosen for their ample flash and LoRa capabilities. PSRAM availability varies — the V4 ships with 2 MB PSRAM, while the V3 uses the ESP32-S3FN8 which has **no PSRAM**. The firmware **detects PSRAM at runtime** and allocates the TLSF memory pool from SPIRAM when available, falling back to internal SRAM (~170 KB) on boards without PSRAM.
+This firmware was designed for the **Heltec WiFi LoRa 32 V4**. This board was chosen for its 2MB PSRAM and LoRa capabilities. While the V3 is supported, it uses the ESP32-S3FN8 which has **no PSRAM**. The firmware **detects PSRAM at runtime** and allocates the TLSF memory pool from SPIRAM when available, falling back to internal SRAM (~170 KB) on boards without PSRAM.
 
 | Component | Heltec V3 | Heltec V4 |
 |-----------|-----------|----------|
