@@ -96,6 +96,9 @@
             display.display();
           }
           #endif
+          headless_led_fast_blink();
+        } else if (display_lock_white) {
+          headless_led_fast_blink();
         }
       }
     }

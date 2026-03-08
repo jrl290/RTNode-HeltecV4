@@ -243,6 +243,9 @@ TcpInterface*  local_tcp_interface_ptr = nullptr;
 // RTC memory flag — survives software reset but not power cycle
 RTC_NOINIT_ATTR uint32_t boundary_config_request;
 #define BOUNDARY_CONFIG_MAGIC 0xC0F19A7E
+// RTC flag to skip config portal on next boot (set when user powers off from WCC)
+RTC_NOINIT_ATTR uint32_t boundary_skip_config;
+#define BOUNDARY_SKIP_MAGIC 0x5E1FC0F0
 
 // Bootloop detection: count rapid reboots in RTC memory.
 // After BOOTLOOP_THRESHOLD consecutive reboots within BOOTLOOP_WINDOW_MS,
@@ -473,7 +476,17 @@ void setup() {
 
     display_unblank();
     disp_ready = display_init();
-    update_display();
+    if (disp_ready) {
+      update_display();
+    } else {
+      headless_mode = true;
+      Serial.println("[Headless] No display detected — running in headless mode");
+    }
+  #endif
+
+  // LED solid on at boot for V3/V4 boards (with or without display)
+  #if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
+    headless_led_solid();
   #endif
 
   // ── Boundary Mode: check if config portal is needed ──
@@ -514,7 +527,16 @@ void setup() {
     // OR bootloop detected
     bool need_config = boundary_needs_config();
     bool config_requested = (boundary_config_request == BOUNDARY_CONFIG_MAGIC);
+    bool skip_config = (boundary_skip_config == BOUNDARY_SKIP_MAGIC);
     boundary_config_request = 0;  // Clear flag immediately
+    boundary_skip_config = 0;     // Clear skip flag immediately
+
+    // Skip flag only suppresses a button-triggered re-entry, not a genuinely
+    // unconfigured device.  If there's no config saved, always show the portal.
+    if (skip_config && config_requested) {
+      Serial.println("[Boundary] Skipping config portal — user requested normal boot");
+      config_requested = false;
+    }
 
     if (need_config || config_requested || bootloop_detected) {
       if (bootloop_detected) {
@@ -526,8 +548,39 @@ void setup() {
       }
       config_portal_start();
       // Block here: only run the config portal until user saves and device reboots
+      // Track button state for "off" action (1-3s press = sleep)
+      bool wcc_btn_down = false;
+      uint32_t wcc_btn_down_at = 0;
       while (config_portal_is_active()) {
         config_portal_loop();
+
+        // Headless LED: slow ramp breathe effect during WCC mode
+        headless_led_ramp();
+
+        // Button handling: allow 1-3s press to turn off (deep sleep)
+        // Next power-on boots to normal mode since boundary_config_request is cleared
+        #if HAS_INPUT
+        {
+          int btn = digitalRead(pin_btn_usr1);
+          if (btn == LOW && !wcc_btn_down) {
+            wcc_btn_down = true;
+            wcc_btn_down_at = millis();
+          } else if (btn == HIGH && wcc_btn_down) {
+            uint32_t held = millis() - wcc_btn_down_at;
+            wcc_btn_down = false;
+            if (held >= 700 && held <= 5000) {
+              Serial.println("[Boundary] Button press in WCC mode — powering off");
+              boundary_skip_config = BOUNDARY_SKIP_MAGIC;  // Skip config on next boot
+              headless_led_off();
+              config_portal_stop();
+              #if HAS_SLEEP
+                sleep_now();
+              #endif
+            }
+          }
+        }
+        #endif
+
         #if MCU_VARIANT == MCU_ESP32
           esp_task_wdt_reset();
         #endif
@@ -2511,6 +2564,13 @@ void loop() {
     if (disp_ready && !display_updating) update_display();
   #endif
 
+  // LED solid when operational on V3/V4 boards (yield to fast blink during white screen)
+  #if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
+    if (radio_online && !display_lock_white) {
+      headless_led_solid();
+    }
+  #endif
+
   #if HAS_PMU
     if (pmu_ready) update_pmu();
   #endif
@@ -2558,6 +2618,8 @@ void sleep_now() {
         #endif
       #endif
       #if BOARD_MODEL == BOARD_HELTEC32_V4
+          headless_led_off();
+          headless_led_detach_pwm();
           digitalWrite(LORA_PA_CPS, LOW);
           digitalWrite(LORA_PA_CSD, LOW);
           digitalWrite(LORA_PA_PWR_EN, LOW);

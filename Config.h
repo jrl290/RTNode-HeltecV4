@@ -145,6 +145,7 @@
 	bool hw_ready      = false;
 	bool radio_error   = false;
 	bool disp_ready    = false;
+	bool headless_mode = false;
 	bool pmu_ready     = false;
 	bool promisc       = false;
 	bool implicit      = false;

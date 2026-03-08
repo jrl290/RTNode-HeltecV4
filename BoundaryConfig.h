@@ -557,6 +557,10 @@ void config_portal_start() {
         display.display();
     }
     #endif
+    // Headless: LED ramp will be driven from the WCC portal loop
+    if (headless_mode) {
+        Serial.println("[Config] Headless mode — LED will breathe during config portal");
+    }
 }
 
 // ─── Stop Config Portal ──────────────────────────────────────────────────────

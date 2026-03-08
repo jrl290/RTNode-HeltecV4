@@ -72,6 +72,10 @@ uint8_t eeprom_read(uint32_t mapped_addr);
 #endif
 
 #if HAS_INPUT == true
+	// Forward declarations for headless LED functions (defined later in this file)
+	void headless_led_fast_blink();
+	void headless_led_ramp();
+	void headless_led_off();
 	#include "Input.h"
 #endif
 
@@ -380,6 +384,79 @@ extern RNS::Reticulum reticulum;
 		void led_id_on()  { }
 		void led_id_off() { }
 	#endif
+#endif
+
+// ── Headless LED indicators (for Heltec V4 without OLED) ─────────────────
+// Uses LEDC PWM for smooth ramp effects on pin_led_tx (GPIO 35)
+#if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
+  #define HEADLESS_LED_CHANNEL 0
+  bool headless_led_pwm_attached = false;
+
+  void headless_led_ensure_pwm() {
+    if (!headless_led_pwm_attached) {
+      ledcSetup(HEADLESS_LED_CHANNEL, 5000, 8);  // channel 0, 5kHz, 8-bit
+      ledcAttachPin(pin_led_tx, HEADLESS_LED_CHANNEL);
+      headless_led_pwm_attached = true;
+    }
+  }
+
+  void headless_led_detach_pwm() {
+    if (headless_led_pwm_attached) {
+      ledcDetachPin(pin_led_tx);
+      headless_led_pwm_attached = false;
+      pinMode(pin_led_tx, OUTPUT);
+    }
+  }
+
+  // Solid ON — normal headless operation
+  void headless_led_solid() {
+    headless_led_ensure_pwm();
+    ledcWrite(HEADLESS_LED_CHANNEL, 255);
+  }
+
+  // Fast blink — replaces "white screen" indicator (non-blocking, call from loop)
+  void headless_led_fast_blink() {
+    headless_led_ensure_pwm();
+    static uint32_t last_toggle = 0;
+    static bool on = false;
+    uint32_t now = millis();
+    if (now - last_toggle >= 100) {  // 5Hz blink
+      last_toggle = now;
+      on = !on;
+      ledcWrite(HEADLESS_LED_CHANNEL, on ? 255 : 0);
+    }
+  }
+
+  // Slow ramp in/out — breathe effect for WiFi Captive Configure mode
+  void headless_led_ramp() {
+    headless_led_ensure_pwm();
+    static uint32_t last_step = 0;
+    static uint8_t brightness = 0;
+    static int8_t direction = 1;
+    uint32_t now = millis();
+    if (now - last_step >= 10) {  // ~100 steps/sec, full cycle ~5 seconds
+      last_step = now;
+      brightness += direction;
+      if (brightness >= 255) { brightness = 255; direction = -1; }
+      if (brightness == 0)   { direction = 1; }
+      ledcWrite(HEADLESS_LED_CHANNEL, brightness);
+    }
+  }
+
+  void headless_led_off() {
+    if (headless_led_pwm_attached) {
+      ledcWrite(HEADLESS_LED_CHANNEL, 0);
+    } else {
+      digitalWrite(pin_led_tx, LOW);
+    }
+  }
+#else
+  void headless_led_ensure_pwm() {}
+  void headless_led_detach_pwm() {}
+  void headless_led_solid() {}
+  void headless_led_fast_blink() {}
+  void headless_led_ramp() {}
+  void headless_led_off() {}
 #endif
 
 void hard_reset(void) {
