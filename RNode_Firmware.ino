@@ -36,6 +36,7 @@
 #include "TcpInterface.h"
 #include "FirewallConfig.h"
 #include "Advertise.h"
+#include "RemoteConfig.h"
 #include "MdnsService.h"
 #include "esp_bt.h"
 #endif
@@ -1214,6 +1215,7 @@ void setup() {
       // announcer is a no-op until the user has enabled "Advertise Device"
       // in the captive-portal configuration.
       advertise_init();
+      remote_config_init();
 #endif
 
       HEAD("RNS is READY!", RNS::LOG_TRACE);
@@ -2770,6 +2772,7 @@ void loop() {
   // No-op until Reticulum is up and the user has enabled "Advertise Device".
   if (reticulum) {
     advertise_loop();
+    remote_config_loop();
   }
 #endif
 
