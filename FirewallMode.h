@@ -106,6 +106,13 @@
 #define ADDR_CONF_MDNS_EN       0x151 // mDNS enable flag (1 byte; 0x73 = enabled, 0xFF = unset/default-enabled)
 #define ADDR_CONF_MDNS_NAME     0x152 // Custom mDNS hostname (33 bytes, null-terminated; empty = auto)
 #define ADDR_CONF_PROBE_EN      0x23C // rnprobe responder enable (1 byte; 0x73 = enabled, 0xFF = unset/disabled)
+#ifdef REMOTE_CONFIG
+// Remote management (see RemoteConfig.h): identity hashes allowed to manage this node over a
+// Reticulum Link. Zero admins (or 0xFF = unset) leaves remote management inert.
+#define REMOTE_CONFIG_MAX_ADMINS 4
+#define ADDR_CONF_ADMIN_COUNT   0x240 // number of admin identity hashes (1 byte; 0xFF = unset = none)
+#define ADDR_CONF_ADMIN_HASHES  0x241 // REMOTE_CONFIG_MAX_ADMINS x 16 bytes (0x241..0x280)
+#endif
 // Extra backbone slots 1-3 (slot 0 remains in the legacy BTCP/BHOST/BHPORT
 // fields for backward compatibility with existing devices).
 #define ADDR_CONF_BSLOT_BASE    0x173
@@ -172,6 +179,12 @@ struct FirewallState {
     // The destination hash is deterministic: hash(transport_identity_hash +
     // name_hash("rnstransport", "probe")).  Default: disabled.
     bool     probe_enabled;
+
+#ifdef REMOTE_CONFIG
+    // Remote management: identity hashes (16 bytes) allowed to manage this node (0 = inert)
+    uint8_t  admin_count;
+    uint8_t  admin_hashes[REMOTE_CONFIG_MAX_ADMINS][16];
+#endif
 
     // Runtime state
     bool     wifi_connected;
@@ -443,6 +456,20 @@ inline void firewall_load_config() {
         firewall_state.probe_enabled = (probe_byte == FIREWALL_ENABLE_BYTE);
     }
 
+#ifdef REMOTE_CONFIG
+    // Remote management admin identities (0xFF / out of range = none)
+    {
+        uint8_t n = EEPROM.read(config_addr(ADDR_CONF_ADMIN_COUNT));
+        if (n > REMOTE_CONFIG_MAX_ADMINS) n = 0;
+        firewall_state.admin_count = n;
+        for (uint8_t a = 0; a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+            for (uint8_t i = 0; i < 16; i++) {
+                firewall_state.admin_hashes[a][i] = (a < n) ? EEPROM.read(config_addr(ADDR_CONF_ADMIN_HASHES + a * 16 + i)) : 0;
+            }
+        }
+    }
+#endif
+
     // Reset runtime state
     firewall_state.packets_bridged_lora_to_tcp = 0;
     firewall_state.packets_bridged_tcp_to_lora = 0;
@@ -546,6 +573,16 @@ inline void firewall_save_config() {
     // rnprobe responder
     EEPROM.write(config_addr(ADDR_CONF_PROBE_EN),
                  firewall_state.probe_enabled ? FIREWALL_ENABLE_BYTE : 0x00);
+
+#ifdef REMOTE_CONFIG
+    // Remote management admin identities
+    EEPROM.write(config_addr(ADDR_CONF_ADMIN_COUNT), firewall_state.admin_count);
+    for (uint8_t a = 0; a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+        for (uint8_t i = 0; i < 16; i++) {
+            EEPROM.write(config_addr(ADDR_CONF_ADMIN_HASHES + a * 16 + i), firewall_state.admin_hashes[a][i]);
+        }
+    }
+#endif
 
     EEPROM.write(config_addr(ADDR_CONF_APP_MARKER0), FIREWALL_APP_MARKER0);
     EEPROM.write(config_addr(ADDR_CONF_APP_MARKER1), FIREWALL_APP_MARKER1);

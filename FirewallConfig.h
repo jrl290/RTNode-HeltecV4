@@ -399,6 +399,28 @@ static void config_send_html() {
               "from any reachable Reticulum node.  The hash is also printed in the serial log "
               "as <code>PROBE-DST</code> at boot.</p>");
 
+#ifdef REMOTE_CONFIG
+    // ── Remote management Section ──
+    html += F(
+        "<h2>&#x1f510; Remote Management</h2>"
+        "<p class='note'>Reticulum identities allowed to read and change this node's settings over an "
+        "encrypted Link (destination <code>rtnode.config</code>).  One 32-hex-character identity hash per "
+        "line, up to 4.  The <b>first line is the super_admin</b>: it can never be removed over the network; "
+        "other admins can add or remove admins but not the super_admin.  Leave empty to disable remote "
+        "management.  Only identity hashes of people you trust: an admin can rewrite every setting of this node.</p>"
+        "<label>Admin identity hashes</label>"
+        "<textarea name='admin_ids' rows='4' spellcheck='false' autocomplete='off' "
+        "style='width:100%;font-family:monospace;'>"
+    );
+    for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+        char hx[33];
+        for (uint8_t i = 0; i < 16; i++) snprintf(hx + i * 2, 3, "%02x", firewall_state.admin_hashes[a][i]);
+        html += String(hx);
+        html += F("\n");
+    }
+    html += F("</textarea>");
+#endif
+
     // ── LoRa Radio Section ──
     html += F(
         "<h2>&#x1f4fb; LoRa Radio</h2>"
@@ -807,6 +829,30 @@ static void config_handle_save() {
 
     // ── rnprobe responder ──
     firewall_state.probe_enabled = (config_server->arg("probe_en").toInt() == 1);
+
+#ifdef REMOTE_CONFIG
+    // ── Remote management admin identities ──
+    // Accepts 32-hex-character tokens separated by whitespace or commas; anything else is ignored.
+    if (config_server->hasArg("admin_ids")) {
+        String ids = config_server->arg("admin_ids");
+        uint8_t count = 0;
+        memset(firewall_state.admin_hashes, 0, sizeof(firewall_state.admin_hashes));
+        int pos = 0, len = (int)ids.length();
+        while (pos < len && count < REMOTE_CONFIG_MAX_ADMINS) {
+            while (pos < len && !isxdigit((unsigned char)ids[pos])) pos++;
+            int start = pos;
+            while (pos < len && isxdigit((unsigned char)ids[pos])) pos++;
+            if (pos - start == 32) {
+                for (uint8_t i = 0; i < 16; i++) {
+                    char two[3] = { ids[start + i * 2], ids[start + i * 2 + 1], 0 };
+                    firewall_state.admin_hashes[count][i] = (uint8_t)strtoul(two, nullptr, 16);
+                }
+                count++;
+            }
+        }
+        firewall_state.admin_count = count;
+    }
+#endif
 
     // Save boundary config to EEPROM
     firewall_save_config();

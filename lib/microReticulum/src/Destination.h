@@ -26,6 +26,7 @@ namespace RNS {
 	public:
 		using response_generator = Bytes(*)(const Bytes& path, const Bytes& data, const Bytes& request_id, const Bytes& link_id, const Identity& remote_identity, double requested_at);
 	public:
+		RequestHandler() = default;
 		RequestHandler(const RequestHandler& handler) {
 			_path = handler._path;
 			_response_generator = handler._response_generator;
@@ -196,6 +197,10 @@ namespace RNS {
 		inline const Identity& identity() const { assert(_object); return _object->_identity; }
 		inline const std::map<Bytes, PathResponse>& path_responses() const { assert(_object); return _object->_path_responses; }
 		inline const std::map<Bytes, RequestHandler>& request_handlers() const { assert(_object); return _object->_request_handlers; }
+
+		// request handlers (served over an established Link)
+		bool register_request_handler(const Bytes& path, RequestHandler::response_generator response_generator, Type::Destination::request_policies allow = Type::Destination::ALLOW_NONE, const std::set<Bytes>& allowed_list = {});
+		bool deregister_request_handler(const Bytes& path);
 
 		// setters
 		// CBA Don't allow changing destination hash after construction since it's used as key in collections

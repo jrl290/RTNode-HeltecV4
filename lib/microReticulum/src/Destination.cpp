@@ -307,25 +307,36 @@ Packet Destination::announce(const Bytes& app_data /*= {}*/, bool path_response 
 Registers a request handler.
 
 :param path: The path for the request handler to be registered.
-:param response_generator: A function or method with the signature *response_generator(path, data, request_id, link_id, remote_identity, requested_at)* to be called. Whatever this funcion returns will be sent as a response to the requester. If the function returns ``None``, no response will be sent.
-:param allow: One of ``RNS.Destination.ALLOW_NONE``, ``RNS.Destination.ALLOW_ALL`` or ``RNS.Destination.ALLOW_LIST``. If ``RNS.Destination.ALLOW_LIST`` is set, the request handler will only respond to requests for identified peers in the supplied list.
-:param allowed_list: A list of *bytes-like* :ref:`RNS.Identity<api-identity>` hashes.
-:raises: ``ValueError`` if any of the supplied arguments are invalid.
+:param response_generator: A function with the signature *response_generator(path, data, request_id, link_id, remote_identity, requested_at)* returning the response data, or an empty Bytes to send no response.
+:param allow: One of ``ALLOW_NONE``, ``ALLOW_ALL`` or ``ALLOW_LIST``. If ``ALLOW_LIST`` is set, the request is only handled if the link peer identified itself with an identity hash contained in *allowed_list*.
+:param allowed_list: A set of identity hashes.
+:returns: True if the handler was registered, false if an argument was invalid.
 */
-/*
-void Destination::register_request_handler(const Bytes& path, response_generator = None, request_policies allow = ALLOW_NONE, allowed_list = None) {
-	if path == None or path == "":
-		raise ValueError("Invalid path specified")
-	elif not callable(response_generator):
-		raise ValueError("Invalid response generator specified")
-	elif not allow in Destination.request_policies:
-		raise ValueError("Invalid request policy")
-	else:
-		path_hash = RNS.Identity.truncated_hash(path.encode("utf-8"))
-		request_handler = [path, response_generator, allow, allowed_list]
-		self.request_handlers[path_hash] = request_handler
+bool Destination::register_request_handler(const Bytes& path, RequestHandler::response_generator response_generator, Type::Destination::request_policies allow /*= Type::Destination::ALLOW_NONE*/, const std::set<Bytes>& allowed_list /*= {}*/) {
+	assert(_object);
+	if (!path) {
+		ERROR("Invalid path specified for request handler");
+		return false;
+	}
+	if (response_generator == nullptr) {
+		ERROR("Invalid response generator specified for request handler");
+		return false;
+	}
+	if (allow != Type::Destination::ALLOW_NONE && allow != Type::Destination::ALLOW_ALL && allow != Type::Destination::ALLOW_LIST) {
+		ERROR("Invalid request policy specified for request handler");
+		return false;
+	}
+	const Bytes path_hash(Identity::truncated_hash(path));
+	RequestHandler request_handler;
+	request_handler._path = path;
+	request_handler._response_generator = response_generator;
+	request_handler._allow = allow;
+	request_handler._allowed_list = allowed_list;
+	// std::map::insert() does not replace an existing key, so erase first
+	_object->_request_handlers.erase(path_hash);
+	_object->_request_handlers.insert({path_hash, request_handler});
+	return true;
 }
-*/
 
 /*
 Deregisters a request handler.
@@ -333,16 +344,11 @@ Deregisters a request handler.
 :param path: The path for the request handler to be deregistered.
 :returns: True if the handler was deregistered, otherwise False.
 */
-/*
 bool Destination::deregister_request_handler(const Bytes& path) {
-	path_hash = RNS.Identity.truncated_hash(path.encode("utf-8"))
-	if path_hash in self.request_handlers:
-		self.request_handlers.pop(path_hash)
-		return True
-	else:
-		return False
+	assert(_object);
+	const Bytes path_hash(Identity::truncated_hash(path));
+	return _object->_request_handlers.erase(path_hash) > 0;
 }
-*/
 
 void Destination::receive(const Packet& packet) {
 	assert(_object);
