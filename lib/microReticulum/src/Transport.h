@@ -446,6 +446,8 @@ namespace RNS {
 		static inline const Identity& identity() { return _identity; }
 		inline static uint16_t path_table_maxsize() { return _path_table_maxsize; }
 		inline static void path_table_maxsize(uint16_t path_table_maxsize) { _path_table_maxsize = path_table_maxsize; }
+		// FIREWALL_MODE: always admit backbone packets addressed to this destination hash (never culled)
+		static void firewall_pin_local_destination(const Bytes& addr);
 		inline static uint16_t probe_destination_enabled() { return _path_table_maxpersist; }
 		inline static void path_table_maxpersist(uint16_t path_table_maxpersist) { _path_table_maxpersist = path_table_maxpersist; }
 		// CBA TEST

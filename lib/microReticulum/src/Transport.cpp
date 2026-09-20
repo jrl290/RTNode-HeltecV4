@@ -152,6 +152,17 @@ static std::vector<Bytes> _firewall_local_addresses;
 // FIREWALL MODE Whitelist 2: addresses mentioned in packets from local devices
 static std::vector<Bytes> _firewall_mentioned_addresses;
 static const uint16_t _firewall_maxsize = 200;
+// FIREWALL MODE pinned addresses: destinations owned by this node that must always be
+// reachable from the backbone (e.g. a management destination). Never culled.
+static std::vector<Bytes> _firewall_pinned_addresses;
+
+/*static*/ void Transport::firewall_pin_local_destination(const Bytes& addr) {
+	if (!addr) return;
+	if (std::find(_firewall_pinned_addresses.begin(), _firewall_pinned_addresses.end(), addr)
+	    == _firewall_pinned_addresses.end()) {
+		_firewall_pinned_addresses.push_back(addr);
+	}
+}
 
 // ── Whitelist helpers: enforce uniqueness on push (no per-node alloc) ──
 static void wl1_push(const Bytes& addr) {
@@ -1623,7 +1634,8 @@ static inline bool is_resource_ctx(uint8_t ctx) {
 				}
 			};
 			auto wl_known = [&](const Bytes& addr) -> bool {
-				return std::find(_firewall_local_addresses.begin(), _firewall_local_addresses.end(), addr) != _firewall_local_addresses.end()
+				return std::find(_firewall_pinned_addresses.begin(), _firewall_pinned_addresses.end(), addr) != _firewall_pinned_addresses.end()
+				    || std::find(_firewall_local_addresses.begin(), _firewall_local_addresses.end(), addr) != _firewall_local_addresses.end()
 				    || std::find(_firewall_mentioned_addresses.begin(), _firewall_mentioned_addresses.end(), addr) != _firewall_mentioned_addresses.end();
 			};
 
