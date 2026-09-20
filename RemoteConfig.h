@@ -59,6 +59,12 @@ extern char     rtc_node_hash_hex[33];
 #define REMOTE_CONFIG_MIN_FREE_HEAP 40000
 // Tear down a session that has been idle this long (seconds).
 #define REMOTE_CONFIG_IDLE_TIMEOUT  120.0
+// Re-announce the management destination: shortly after a backbone (re)connects and then periodically, so
+// that upstream transport nodes always hold a fresh path (a multi-hop path request for a leaf device is not
+// reliably forwarded, and cached paths go stale when the node's TCP connection is re-established).
+#define REMOTE_CONFIG_ANNOUNCE_DELAY_MS     5000UL
+#define REMOTE_CONFIG_ANNOUNCE_INTERVAL_MS  600000UL   // 10 minutes
+#define REMOTE_CONFIG_ANNOUNCE_MIN_GAP_MS   60000UL    // never more often than once a minute
 
 // KISS command carrying one JSON request/response over USB (provisioning; physical access = trust).
 #define CMD_RT_CONFIG               0xB0
@@ -69,6 +75,9 @@ static uint32_t remote_config_reboot_at = 0;   // millis() deadline of a deferre
 static RNS::Destination remote_config_destination({RNS::Type::NONE});
 static RNS::Link        remote_config_link({RNS::Type::NONE});
 static bool             remote_config_ready = false;
+static uint32_t         remote_config_next_announce = 0;   // millis() deadline, 0 = none pending
+static uint32_t         remote_config_last_announce = 0;
+static bool             remote_config_backbone_was_up = false;
 
 static RNS::Bytes remote_config_json(const JsonDocument& doc) {
     if (measureJson(doc) > REMOTE_CONFIG_MAX_RESPONSE) {
@@ -434,6 +443,25 @@ inline void remote_config_loop() {
         ESP.restart();
     }
     if (!remote_config_ready) return;
+
+    // Announce on (re)connection of a backbone, then periodically while one is up.
+    {
+        uint32_t now = millis();
+        bool up = firewall_backbone_connected_count() > 0;
+        if (up && !remote_config_backbone_was_up) remote_config_next_announce = now + REMOTE_CONFIG_ANNOUNCE_DELAY_MS;
+        remote_config_backbone_was_up = up;
+        if (up && remote_config_next_announce != 0 && (int32_t)(now - remote_config_next_announce) >= 0) {
+            if (remote_config_last_announce == 0 || now - remote_config_last_announce >= REMOTE_CONFIG_ANNOUNCE_MIN_GAP_MS) {
+                remote_config_destination.announce();
+                remote_config_last_announce = now;
+                remote_config_next_announce = now + REMOTE_CONFIG_ANNOUNCE_INTERVAL_MS;
+                NOTICE("Remote management: destination announced");
+            } else {
+                remote_config_next_announce = remote_config_last_announce + REMOTE_CONFIG_ANNOUNCE_MIN_GAP_MS;
+            }
+        }
+    }
+
     if (remote_config_link && remote_config_link.status() == RNS::Type::Link::ACTIVE
         && remote_config_link.inactive_for() > REMOTE_CONFIG_IDLE_TIMEOUT) {
         NOTICE("Remote management: idle session torn down");
