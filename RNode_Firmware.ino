@@ -1796,6 +1796,19 @@ void transmit(uint16_t size) {
   } else { kiss_indicate_error(ERROR_TXFAILED); led_indicate_error(5); }
 }
 
+#ifdef REMOTE_CONFIG
+// True only when incoming KISS bytes are really coming from the USB port (see buffer_serial()).
+static bool serial_source_is_usb() {
+  #if HAS_BLUETOOTH || HAS_BLE == true
+    if (bt_state == BT_STATE_CONNECTED) return false;
+  #endif
+  #if HAS_WIFI
+    if (wifi_host_is_connected()) return false;
+  #endif
+  return true;
+}
+#endif
+
 void serial_callback(uint8_t sbyte) {
   if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
     IN_FRAME = false;
@@ -1817,6 +1830,9 @@ void serial_callback(uint8_t sbyte) {
     }
 
   } else if (sbyte == FEND) {
+#ifdef REMOTE_CONFIG
+    if (IN_FRAME && command == CMD_RT_CONFIG) remote_config_usb_finish(serial_source_is_usb());
+#endif
     IN_FRAME = true;
     command = CMD_UNKNOWN;
     frame_len = 0;
@@ -1824,6 +1840,13 @@ void serial_callback(uint8_t sbyte) {
     // Have a look at the command byte first
     if (frame_len == 0 && command == CMD_UNKNOWN) {
         command = sbyte;
+#ifdef REMOTE_CONFIG
+        if (command == CMD_RT_CONFIG) remote_config_usb_begin();
+#endif
+#ifdef REMOTE_CONFIG
+    } else if (command == CMD_RT_CONFIG) {
+        remote_config_usb_feed(sbyte);
+#endif
     } else if (command == CMD_DATA) {
         if (bt_state != BT_STATE_CONNECTED) {
           cable_state = CABLE_STATE_CONNECTED;

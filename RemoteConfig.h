@@ -60,6 +60,12 @@ extern char     rtc_node_hash_hex[33];
 // Tear down a session that has been idle this long (seconds).
 #define REMOTE_CONFIG_IDLE_TIMEOUT  120.0
 
+// KISS command carrying one JSON request/response over USB (provisioning; physical access = trust).
+#define CMD_RT_CONFIG               0xB0
+#define REMOTE_CONFIG_USB_MAX       1400
+
+static uint32_t remote_config_reboot_at = 0;   // millis() deadline of a deferred restart, 0 = none
+
 static RNS::Destination remote_config_destination({RNS::Type::NONE});
 static RNS::Link        remote_config_link({RNS::Type::NONE});
 static bool             remote_config_ready = false;
@@ -143,6 +149,14 @@ static bool remote_config_section(const std::string& section, bool secrets, Json
         doc["passphrase_set"] = (firewall_state.ifac_passphrase[0] != '\0');
         if (secrets) doc["passphrase"] = firewall_state.ifac_passphrase;
     }
+    else if (section == "admins") {
+        JsonArray arr = doc["admins"].to<JsonArray>();
+        for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+            char hx[33];
+            for (uint8_t i = 0; i < 16; i++) snprintf(hx + i * 2, 3, "%02x", firewall_state.admin_hashes[a][i]);
+            arr.add(hx);
+        }
+    }
     else if (section == "advert") {
         doc["enabled"] = firewall_state.advert_enabled;
         doc["lat"] = firewall_state.advert_lat;
@@ -170,6 +184,204 @@ static RNS::Bytes remote_config_get(const RNS::Bytes& path, const RNS::Bytes& da
     JsonDocument doc;
     if (!remote_config_section(section, secrets, doc)) return remote_config_error("unknown section");
     return remote_config_json(doc);
+}
+
+// ── Partial configuration apply ──────────────────────────────────────────────────────────────
+// Applies only the keys present in `cfg`, with the same validation and persistence as the
+// captive portal, then saves. `allow_admins` (USB only) also allows replacing the admin list.
+static void remote_config_write_string(int addr, const char* value, int maxlen) {
+    for (int i = 0; i < maxlen; i++) {
+        EEPROM.write(config_addr(addr + i), (value[i] != '\0' && i < (int)strlen(value)) ? (uint8_t)value[i] : 0x00);
+    }
+    EEPROM.write(config_addr(addr + maxlen), 0x00);
+}
+
+static bool remote_config_fits(JsonVariantConst v, size_t maxlen) {
+    return v.is<const char*>() && strlen(v.as<const char*>()) <= maxlen;
+}
+
+static bool remote_config_hex16(const char* hex, uint8_t out[16]) {
+    if (strlen(hex) != 32) return false;
+    for (int i = 0; i < 32; i++) if (!isxdigit((unsigned char)hex[i])) return false;
+    for (int i = 0; i < 16; i++) { char two[3] = { hex[i * 2], hex[i * 2 + 1], 0 }; out[i] = (uint8_t)strtoul(two, nullptr, 16); }
+    return true;
+}
+
+static void remote_config_apply(JsonObjectConst cfg, bool allow_admins, JsonDocument& report) {
+    JsonArray applied = report["applied"].to<JsonArray>();
+    JsonArray errors  = report["errors"].to<JsonArray>();
+    bool any = false;
+
+    if (!cfg["name"].isNull()) {
+        if (remote_config_fits(cfg["name"], 32)) {
+            memset(firewall_state.node_name, 0, sizeof(firewall_state.node_name));
+            strncpy(firewall_state.node_name, cfg["name"].as<const char*>(), sizeof(firewall_state.node_name) - 1);
+            applied.add("name"); any = true;
+        } else errors.add("name");
+    }
+
+    JsonObjectConst wifi = cfg["wifi"];
+    if (!wifi.isNull()) {
+        bool ok = true;
+        if (!wifi["enabled"].isNull()) firewall_state.wifi_enabled = wifi["enabled"].as<bool>();
+        if (!wifi["ssid"].isNull()) {
+            if (remote_config_fits(wifi["ssid"], 32)) {
+                remote_config_write_string(ADDR_CONF_SSID, wifi["ssid"].as<const char*>(), 32);
+                EEPROM.write(eeprom_addr(ADDR_CONF_WIFI), WR_WIFI_STA);
+            } else { errors.add("wifi.ssid"); ok = false; }
+        }
+        if (!wifi["psk"].isNull()) {
+            if (remote_config_fits(wifi["psk"], 32)) remote_config_write_string(ADDR_CONF_PSK, wifi["psk"].as<const char*>(), 32);
+            else { errors.add("wifi.psk"); ok = false; }
+        }
+        if (ok) { applied.add("wifi"); any = true; }
+    }
+
+    JsonArrayConst bbs = cfg["backbones"];
+    if (!bbs.isNull()) {
+        size_t slot = 0;
+        for (JsonVariantConst b : bbs) {
+            if (slot >= FIREWALL_BACKBONE_SLOTS) { errors.add("backbones.count"); break; }
+            if (!b.isNull()) {
+                FirewallBackboneSlot& s = firewall_state.backbones[slot];
+                if (!b["host"].isNull()) {
+                    if (remote_config_fits(b["host"], FIREWALL_BACKBONE_HOST_LEN - 1)) {
+                        memset(s.host, 0, sizeof(s.host));
+                        strncpy(s.host, b["host"].as<const char*>(), sizeof(s.host) - 1);
+                    } else errors.add("backbones.host");
+                }
+                if (!b["port"].isNull()) {
+                    long port = b["port"].as<long>();
+                    if (port >= 1 && port <= 65535) s.port = (uint16_t)port; else errors.add("backbones.port");
+                }
+                if (!b["enabled"].isNull()) s.enabled = b["enabled"].as<bool>();
+                if (s.port == 0) s.port = 4242;
+                if (s.host[0] == '\0') s.enabled = false;   // same rule as the portal
+                any = true;
+            }
+            slot++;
+        }
+        applied.add("backbones");
+    }
+
+    JsonObjectConst server = cfg["server"];
+    if (!server.isNull()) {
+        if (!server["tcp_enabled"].isNull()) firewall_state.ap_tcp_enabled = server["tcp_enabled"].as<bool>();
+        if (!server["tcp_port"].isNull()) {
+            long port = server["tcp_port"].as<long>();
+            if (port >= 1 && port <= 65535) firewall_state.ap_tcp_port = (uint16_t)port; else errors.add("server.tcp_port");
+        }
+        if (!server["mdns_enabled"].isNull()) firewall_state.mdns_enabled = server["mdns_enabled"].as<bool>();
+        if (!server["probe_enabled"].isNull()) firewall_state.probe_enabled = server["probe_enabled"].as<bool>();
+        if (!server["mdns_hostname"].isNull()) {
+            if (remote_config_fits(server["mdns_hostname"], 32)) {
+                const char* in = server["mdns_hostname"].as<const char*>();
+                memset(firewall_state.mdns_hostname, 0, sizeof(firewall_state.mdns_hostname));
+                size_t j = 0;
+                for (size_t i = 0; in[i] && j < sizeof(firewall_state.mdns_hostname) - 1; i++) {
+                    char c = in[i];
+                    if (c >= 'A' && c <= 'Z') c += 32;
+                    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') firewall_state.mdns_hostname[j++] = c;
+                }
+            } else errors.add("server.mdns_hostname");
+        }
+        applied.add("server"); any = true;
+    }
+
+    JsonObjectConst lora = cfg["lora"];
+    if (!lora.isNull()) {
+        if (!lora["freq_hz"].isNull()) { uint32_t v = lora["freq_hz"].as<uint32_t>(); if (v >= 137000000UL && v <= 1020000000UL) lora_freq = v; else errors.add("lora.freq_hz"); }
+        if (!lora["bw_hz"].isNull())   { uint32_t v = lora["bw_hz"].as<uint32_t>();   if (v >= 7800 && v <= 500000) lora_bw = v; else errors.add("lora.bw_hz"); }
+        if (!lora["sf"].isNull())      { int v = lora["sf"].as<int>();  if (v >= 5 && v <= 12) lora_sf = v;  else errors.add("lora.sf"); }
+        if (!lora["cr"].isNull())      { int v = lora["cr"].as<int>();  if (v >= 5 && v <= 8)  lora_cr = v;  else errors.add("lora.cr"); }
+        if (!lora["txp_dbm"].isNull()) { int v = lora["txp_dbm"].as<int>(); if (v >= 2 && v <= 30) lora_txp = v; else errors.add("lora.txp_dbm"); }
+        if (!lora["airtime_short_pct"].isNull() || !lora["airtime_long_pct"].isNull()) {
+            float st = lora["airtime_short_pct"] | (firewall_state.st_airtime_limit * 100.0f);
+            float lt = lora["airtime_long_pct"]  | (firewall_state.lt_airtime_limit * 100.0f);
+            if (isnan(st) || st < 0.0f) st = 0.0f; if (st > 25.0f) st = 25.0f;
+            if (isnan(lt) || lt < 0.0f) lt = 0.0f; if (lt > 25.0f) lt = 25.0f;
+            firewall_state.st_airtime_limit = st / 100.0f;
+            firewall_state.lt_airtime_limit = lt / 100.0f;
+            EEPROM.write(config_addr(ADDR_CONF_ST_AL), (uint8_t)(st * 10.0f + 0.5f));
+            EEPROM.write(config_addr(ADDR_CONF_LT_AL), (uint8_t)(lt * 10.0f + 0.5f));
+        }
+        // Persist exactly what the portal persists
+        eeprom_update(eeprom_addr(ADDR_CONF_SF), lora_sf);
+        eeprom_update(eeprom_addr(ADDR_CONF_CR), lora_cr);
+        eeprom_update(eeprom_addr(ADDR_CONF_TXP), lora_txp);
+        for (int i = 0; i < 4; i++) eeprom_update(eeprom_addr(ADDR_CONF_BW) + i, lora_bw >> (24 - 8 * i));
+        for (int i = 0; i < 4; i++) eeprom_update(eeprom_addr(ADDR_CONF_FREQ) + i, lora_freq >> (24 - 8 * i));
+        eeprom_update(eeprom_addr(ADDR_CONF_OK), CONF_OK_BYTE);
+        applied.add("lora"); any = true;
+    }
+
+    JsonObjectConst ifac = cfg["ifac"];
+    if (!ifac.isNull()) {
+        if (!ifac["enabled"].isNull()) firewall_state.ifac_enabled = ifac["enabled"].as<bool>();
+        if (!ifac["netname"].isNull()) {
+            if (remote_config_fits(ifac["netname"], 32)) {
+                memset(firewall_state.ifac_netname, 0, sizeof(firewall_state.ifac_netname));
+                strncpy(firewall_state.ifac_netname, ifac["netname"].as<const char*>(), sizeof(firewall_state.ifac_netname) - 1);
+            } else errors.add("ifac.netname");
+        }
+        if (!ifac["passphrase"].isNull()) {
+            if (remote_config_fits(ifac["passphrase"], 32)) {
+                memset(firewall_state.ifac_passphrase, 0, sizeof(firewall_state.ifac_passphrase));
+                strncpy(firewall_state.ifac_passphrase, ifac["passphrase"].as<const char*>(), sizeof(firewall_state.ifac_passphrase) - 1);
+            } else errors.add("ifac.passphrase");
+        }
+        if (firewall_state.ifac_enabled && firewall_state.ifac_netname[0] == '\0' && firewall_state.ifac_passphrase[0] == '\0') {
+            firewall_state.ifac_enabled = false;   // same rule as the portal
+        }
+        applied.add("ifac"); any = true;
+    }
+
+    JsonObjectConst advert = cfg["advert"];
+    if (!advert.isNull()) {
+        if (!advert["enabled"].isNull()) firewall_state.advert_enabled = advert["enabled"].as<bool>();
+        if (!advert["jitter"].isNull())  firewall_state.advert_jitter  = advert["jitter"].as<bool>();
+        if (!advert["lat"].isNull()) { double v = advert["lat"].as<double>(); if (v >= -90.0 && v <= 90.0)   firewall_state.advert_lat = v; else errors.add("advert.lat"); }
+        if (!advert["lon"].isNull()) { double v = advert["lon"].as<double>(); if (v >= -180.0 && v <= 180.0) firewall_state.advert_lon = v; else errors.add("advert.lon"); }
+        applied.add("advert"); any = true;
+    }
+
+    if (!cfg["admins"].isNull()) {
+        if (!allow_admins) {
+            errors.add("admins: USB only");
+        } else {
+            uint8_t n = 0;
+            uint8_t hashes[REMOTE_CONFIG_MAX_ADMINS][16];
+            bool ok = true;
+            for (JsonVariantConst a : cfg["admins"].as<JsonArrayConst>()) {
+                if (n >= REMOTE_CONFIG_MAX_ADMINS || !a.is<const char*>() || !remote_config_hex16(a.as<const char*>(), hashes[n])) { ok = false; break; }
+                n++;
+            }
+            if (ok) {
+                memset(firewall_state.admin_hashes, 0, sizeof(firewall_state.admin_hashes));
+                memcpy(firewall_state.admin_hashes, hashes, sizeof(hashes[0]) * n);
+                firewall_state.admin_count = n;
+                applied.add("admins"); any = true;
+            } else errors.add("admins");
+        }
+    }
+
+    if (any) firewall_save_config();   // writes the firewall state and EEPROM.commit()
+    else EEPROM.commit();
+    report["ok"] = errors.size() == 0;
+}
+
+// Request handler for "/config/set". Same core as USB, but administrators can not be changed here.
+static RNS::Bytes remote_config_set(const RNS::Bytes& path, const RNS::Bytes& data, const RNS::Bytes& request_id,
+                                    const RNS::Bytes& link_id, const RNS::Identity& remote_identity, double requested_at) {
+    if (ESP.getFreeHeap() < REMOTE_CONFIG_MIN_FREE_HEAP) return remote_config_error("low memory");
+    JsonDocument req;
+    if (data.size() == 0 || deserializeJson(req, data.data(), data.size())) return remote_config_error("bad request");
+    JsonDocument report;
+    remote_config_apply(req["config"].as<JsonObjectConst>(), false, report);
+    bool reboot = req["reboot"] | true;
+    if (reboot && report["ok"].as<bool>()) remote_config_reboot_at = millis() + 3000;
+    report["reboot"] = reboot && report["ok"].as<bool>();
+    return remote_config_json(report);
 }
 
 static void remote_config_link_closed(RNS::Link& link) {
@@ -205,6 +417,8 @@ inline void remote_config_init() {
     }
     remote_config_destination.register_request_handler("/config/get", remote_config_get,
                                                        RNS::Type::Destination::ALLOW_LIST, allowed);
+    remote_config_destination.register_request_handler("/config/set", remote_config_set,
+                                                       RNS::Type::Destination::ALLOW_LIST, allowed);
 
     // Let the boundary firewall admit backbone traffic addressed to this destination.
     RNS::Transport::firewall_pin_local_destination(remote_config_destination.hash());
@@ -215,12 +429,89 @@ inline void remote_config_init() {
 
 // Housekeeping: drop an idle session so that a forgotten client cannot lock out the others.
 inline void remote_config_loop() {
+    if (remote_config_reboot_at != 0 && (int32_t)(millis() - remote_config_reboot_at) >= 0) {
+        NOTICE("Remote management: restarting to apply configuration");
+        ESP.restart();
+    }
     if (!remote_config_ready) return;
     if (remote_config_link && remote_config_link.status() == RNS::Type::Link::ACTIVE
         && remote_config_link.inactive_for() > REMOTE_CONFIG_IDLE_TIMEOUT) {
         NOTICE("Remote management: idle session torn down");
         remote_config_link.teardown();
     }
+}
+
+// ── USB provisioning channel ─────────────────────────────────────────────────────────────────
+// One KISS frame  FEND CMD_RT_CONFIG <escaped JSON> FEND  carries a request; the answer uses the same framing.
+//   {"op":"get","section":"wifi","secrets":true}
+//   {"op":"apply","config":{...},"reboot":true}     (same keys as /config/set, plus "admins": [hex32, ...])
+//   {"op":"reboot"}
+// Only honoured when the bytes really came from the USB port (never WiFi or Bluetooth): physical access is the
+// trust anchor, exactly like the captive portal's button. It works even before any admin identity exists.
+static char   remote_config_usb_buf[REMOTE_CONFIG_USB_MAX + 1];
+static size_t remote_config_usb_len = 0;
+static bool   remote_config_usb_esc = false;
+static bool   remote_config_usb_overflow = false;
+
+inline void remote_config_usb_begin() {
+    remote_config_usb_len = 0;
+    remote_config_usb_esc = false;
+    remote_config_usb_overflow = false;
+}
+
+inline void remote_config_usb_feed(uint8_t b) {
+    if (b == FESC) { remote_config_usb_esc = true; return; }
+    if (remote_config_usb_esc) {
+        if (b == TFEND) b = FEND; else if (b == TFESC) b = FESC;
+        remote_config_usb_esc = false;
+    }
+    if (remote_config_usb_len < REMOTE_CONFIG_USB_MAX) remote_config_usb_buf[remote_config_usb_len++] = (char)b;
+    else remote_config_usb_overflow = true;
+}
+
+static void remote_config_usb_reply(const JsonDocument& doc) {
+    static char out[720];
+    size_t n = measureJson(doc) < sizeof(out) ? serializeJson(doc, out, sizeof(out)) : 0;
+    if (n == 0) { static const char e[] = "{\"error\":\"response too large\"}"; memcpy(out, e, sizeof(e) - 1); n = sizeof(e) - 1; }
+    Serial.write((uint8_t)FEND);
+    Serial.write((uint8_t)CMD_RT_CONFIG);
+    for (size_t i = 0; i < n; i++) {
+        uint8_t b = (uint8_t)out[i];
+        if (b == FEND)      { Serial.write((uint8_t)FESC); Serial.write((uint8_t)TFEND); }
+        else if (b == FESC) { Serial.write((uint8_t)FESC); Serial.write((uint8_t)TFESC); }
+        else                { Serial.write(b); }
+    }
+    Serial.write((uint8_t)FEND);
+    Serial.flush();
+}
+
+// Called on the closing FEND of a CMD_RT_CONFIG frame. `from_usb` must come from the caller's source check.
+inline void remote_config_usb_finish(bool from_usb) {
+    if (!from_usb) { NOTICE("Remote management: configuration command ignored (not received over USB)"); return; }
+    JsonDocument reply;
+    JsonDocument req;
+    if (remote_config_usb_overflow || remote_config_usb_len == 0) {
+        reply["error"] = "bad frame";
+    } else if (deserializeJson(req, remote_config_usb_buf, remote_config_usb_len)) {
+        reply["error"] = "bad json";
+    } else {
+        const char* op = req["op"] | "";
+        if (strcmp(op, "get") == 0) {
+            std::string section = req["section"] | "info";
+            if (!remote_config_section(section, req["secrets"] | false, reply)) { reply.clear(); reply["error"] = "unknown section"; }
+        } else if (strcmp(op, "apply") == 0) {
+            remote_config_apply(req["config"].as<JsonObjectConst>(), true, reply);
+            bool reboot = (req["reboot"] | true) && reply["ok"].as<bool>();
+            if (reboot) remote_config_reboot_at = millis() + 2000;
+            reply["reboot"] = reboot;
+        } else if (strcmp(op, "reboot") == 0) {
+            remote_config_reboot_at = millis() + 1500;
+            reply["ok"] = true;
+        } else {
+            reply["error"] = "unknown op";
+        }
+    }
+    remote_config_usb_reply(reply);
 }
 
 #else  // !REMOTE_CONFIG
