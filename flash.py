@@ -126,8 +126,8 @@ _board = None
 def board_profile():
     return BOARD_PROFILES[_board or DEFAULT_BOARD]
 
-def flash_variant():
-    """Return the flash variant dict for the active board and detected flash size.
+def flash_variant_size():
+    """Return the flash size key ("8MB", "16MB"...) of the variant that is built/flashed.
 
     Falls back to the smallest (safest) available variant when the exact size is
     unknown — a smaller-flash firmware runs on any larger device, but not vice versa.
@@ -135,10 +135,13 @@ def flash_variant():
     variants = board_profile()["flash_variants"]
     size = _detected_flash_size or DEFAULT_FLASH_SIZE
     if size in variants:
-        return variants[size]
+        return size
     # Fallback: smallest available variant
-    available = sorted(variants.keys(), key=lambda s: int(s.replace("MB", "")))
-    return variants[available[0]]
+    return sorted(variants.keys(), key=lambda s: int(s.replace("MB", "")))[0]
+
+def flash_variant():
+    """Return the flash variant dict for the active board and detected flash size."""
+    return board_profile()["flash_variants"][flash_variant_size()]
 
 def BUILD_DIR():
     return flash_variant()["build_dir"]
@@ -797,7 +800,12 @@ def _do_merge(output_path, esptool_cmd, bootloader, partitions, boot_app0, firmw
         "merge_bin",
         "--flash_mode", flash_mode,
         "--flash_freq", FLASH_FREQ,
-        "--flash_size", FLASH_SIZE(),
+        # The header must declare the size the partition table was built for (the
+        # variant), not the conservative default used when no device is attached
+        # (--merge-only): an 8MB header on a 16MB-layout image makes the 2nd-stage
+        # bootloader reject the partition table and reset in a loop when the raw
+        # image is written to 0x0 by a tool that does not rewrite the header.
+        "--flash_size", flash_variant_size(),
         "-o", output_path,
         f"0x{BOOTLOADER_ADDR:x}", bootloader,
         f"0x{PARTITIONS_ADDR:x}", partitions,
