@@ -159,6 +159,11 @@ static bool remote_config_section(const std::string& section, bool secrets, Json
         if (secrets) doc["passphrase"] = firewall_state.ifac_passphrase;
     }
     else if (section == "admins") {
+        if (firewall_state.admin_count > 0) {
+            char sa[33];
+            for (uint8_t i = 0; i < 16; i++) snprintf(sa + i * 2, 3, "%02x", firewall_state.admin_hashes[0][i]);
+            doc["super_admin"] = sa;
+        }
         JsonArray arr = doc["admins"].to<JsonArray>();
         for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
             char hx[33];
@@ -197,7 +202,26 @@ static RNS::Bytes remote_config_get(const RNS::Bytes& path, const RNS::Bytes& da
 
 // ── Partial configuration apply ──────────────────────────────────────────────────────────────
 // Applies only the keys present in `cfg`, with the same validation and persistence as the
-// captive portal, then saves. `allow_admins` (USB only) also allows replacing the admin list.
+// captive portal, then saves. `from_usb` (physical access) also allows replacing the whole admin list; over the
+// Reticulum network administrators are managed with "admins_add" / "admins_remove" only. `caller` is the 16-byte
+// hash of the requesting identity (nullptr for USB), used to refuse self-removal.
+static void remote_config_register_handlers();   // defined after the handlers; re-run whenever the admin list changes
+
+// Index of `hash` in the admin list, or -1. Slot 0 is the super_admin: installed over USB or in the portal, and
+// never removable over the Reticulum network.
+static int remote_config_admin_index(const uint8_t hash[16]) {
+    for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+        if (memcmp(firewall_state.admin_hashes[a], hash, 16) == 0) return a;
+    }
+    return -1;
+}
+
+static std::string remote_config_hex_short(const uint8_t hash[16]) {
+    char hx[9];
+    for (int i = 0; i < 4; i++) snprintf(hx + i * 2, 3, "%02x", hash[i]);
+    return std::string(hx);
+}
+
 static void remote_config_write_string(int addr, const char* value, int maxlen) {
     for (int i = 0; i < maxlen; i++) {
         EEPROM.write(config_addr(addr + i), (value[i] != '\0' && i < (int)strlen(value)) ? (uint8_t)value[i] : 0x00);
@@ -216,7 +240,8 @@ static bool remote_config_hex16(const char* hex, uint8_t out[16]) {
     return true;
 }
 
-static void remote_config_apply(JsonObjectConst cfg, bool allow_admins, JsonDocument& report) {
+static void remote_config_apply(JsonObjectConst cfg, bool from_usb, const uint8_t* caller, JsonDocument& report) {
+    bool admins_changed = false;
     JsonArray applied = report["applied"].to<JsonArray>();
     JsonArray errors  = report["errors"].to<JsonArray>();
     bool any = false;
@@ -354,9 +379,10 @@ static void remote_config_apply(JsonObjectConst cfg, bool allow_admins, JsonDocu
         applied.add("advert"); any = true;
     }
 
+    // Full replacement of the admin list: USB only. The first entry becomes the super_admin.
     if (!cfg["admins"].isNull()) {
-        if (!allow_admins) {
-            errors.add("admins: USB only");
+        if (!from_usb) {
+            errors.add("admins: whole-list replacement is USB only (use admins_add / admins_remove)");
         } else {
             uint8_t n = 0;
             uint8_t hashes[REMOTE_CONFIG_MAX_ADMINS][16];
@@ -369,13 +395,46 @@ static void remote_config_apply(JsonObjectConst cfg, bool allow_admins, JsonDocu
                 memset(firewall_state.admin_hashes, 0, sizeof(firewall_state.admin_hashes));
                 memcpy(firewall_state.admin_hashes, hashes, sizeof(hashes[0]) * n);
                 firewall_state.admin_count = n;
-                applied.add("admins"); any = true;
+                admins_changed = true;
             } else errors.add("admins");
         }
     }
 
+    // Adding administrators (idempotent). Allowed to any administrator; the list is capped.
+    if (!cfg["admins_add"].isNull()) {
+        for (JsonVariantConst a : cfg["admins_add"].as<JsonArrayConst>()) {
+            uint8_t h[16];
+            if (!a.is<const char*>() || !remote_config_hex16(a.as<const char*>(), h)) { errors.add("admins_add: invalid hash"); continue; }
+            if (remote_config_admin_index(h) >= 0) continue;   // already an administrator
+            if (firewall_state.admin_count >= REMOTE_CONFIG_MAX_ADMINS) { errors.add("admins_add: list full"); continue; }
+            memcpy(firewall_state.admin_hashes[firewall_state.admin_count], h, 16);
+            firewall_state.admin_count++;
+            admins_changed = true;
+            NOTICE("Remote management: admin added " + remote_config_hex_short(h));
+        }
+    }
+
+    // Removing administrators (idempotent). Never the super_admin (slot 0), never yourself.
+    if (!cfg["admins_remove"].isNull()) {
+        for (JsonVariantConst a : cfg["admins_remove"].as<JsonArrayConst>()) {
+            uint8_t h[16];
+            if (!a.is<const char*>() || !remote_config_hex16(a.as<const char*>(), h)) { errors.add("admins_remove: invalid hash"); continue; }
+            int idx = remote_config_admin_index(h);
+            if (idx < 0) continue;   // not an administrator
+            if (idx == 0) { errors.add("admins_remove: super_admin can not be removed remotely"); continue; }
+            if (caller != nullptr && memcmp(caller, h, 16) == 0) { errors.add("admins_remove: can not remove yourself"); continue; }
+            for (int i = idx; i < (int)firewall_state.admin_count - 1; i++) memcpy(firewall_state.admin_hashes[i], firewall_state.admin_hashes[i + 1], 16);
+            memset(firewall_state.admin_hashes[firewall_state.admin_count - 1], 0, 16);
+            firewall_state.admin_count--;
+            admins_changed = true;
+            NOTICE("Remote management: admin removed " + remote_config_hex_short(h));
+        }
+    }
+    if (admins_changed) { applied.add("admins"); any = true; }
+
     if (any) firewall_save_config();   // writes the firewall state and EEPROM.commit()
     else EEPROM.commit();
+    if (admins_changed && remote_config_ready) remote_config_register_handlers();   // effective immediately, no reboot
     report["ok"] = errors.size() == 0;
 }
 
@@ -386,7 +445,10 @@ static RNS::Bytes remote_config_set(const RNS::Bytes& path, const RNS::Bytes& da
     JsonDocument req;
     if (data.size() == 0 || deserializeJson(req, data.data(), data.size())) return remote_config_error("bad request");
     JsonDocument report;
-    remote_config_apply(req["config"].as<JsonObjectConst>(), false, report);
+    uint8_t caller[16];
+    if (!remote_identity || remote_identity.hash().size() != 16) return remote_config_error("unknown caller");
+    memcpy(caller, remote_identity.hash().data(), 16);
+    remote_config_apply(req["config"].as<JsonObjectConst>(), false, caller, report);
     bool reboot = req["reboot"] | true;
     if (reboot && report["ok"].as<bool>()) remote_config_reboot_at = millis() + 3000;
     report["reboot"] = reboot && report["ok"].as<bool>();
@@ -410,6 +472,18 @@ static void remote_config_link_established(RNS::Link& link) {
     NOTICE("Remote management: session opened");
 }
 
+// (Re)register the request handlers with the current admin list (register replaces an existing handler).
+static void remote_config_register_handlers() {
+    std::set<RNS::Bytes> allowed;
+    for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
+        allowed.insert(RNS::Bytes(firewall_state.admin_hashes[a], 16));
+    }
+    remote_config_destination.register_request_handler("/config/get", remote_config_get,
+                                                       RNS::Type::Destination::ALLOW_LIST, allowed);
+    remote_config_destination.register_request_handler("/config/set", remote_config_set,
+                                                       RNS::Type::Destination::ALLOW_LIST, allowed);
+}
+
 // Register the management destination. Inert unless at least one admin identity is configured.
 inline void remote_config_init() {
     if (firewall_state.admin_count == 0) {
@@ -420,14 +494,7 @@ inline void remote_config_init() {
                                                  RNS::Type::Destination::SINGLE, "rtnode", "config");
     remote_config_destination.set_link_established_callback(remote_config_link_established);
 
-    std::set<RNS::Bytes> allowed;
-    for (uint8_t a = 0; a < firewall_state.admin_count && a < REMOTE_CONFIG_MAX_ADMINS; a++) {
-        allowed.insert(RNS::Bytes(firewall_state.admin_hashes[a], 16));
-    }
-    remote_config_destination.register_request_handler("/config/get", remote_config_get,
-                                                       RNS::Type::Destination::ALLOW_LIST, allowed);
-    remote_config_destination.register_request_handler("/config/set", remote_config_set,
-                                                       RNS::Type::Destination::ALLOW_LIST, allowed);
+    remote_config_register_handlers();
 
     // Let the boundary firewall admit backbone traffic addressed to this destination.
     RNS::Transport::firewall_pin_local_destination(remote_config_destination.hash());
@@ -528,7 +595,7 @@ inline void remote_config_usb_finish(bool from_usb) {
             std::string section = req["section"] | "info";
             if (!remote_config_section(section, req["secrets"] | false, reply)) { reply.clear(); reply["error"] = "unknown section"; }
         } else if (strcmp(op, "apply") == 0) {
-            remote_config_apply(req["config"].as<JsonObjectConst>(), true, reply);
+            remote_config_apply(req["config"].as<JsonObjectConst>(), true, nullptr, reply);
             bool reboot = (req["reboot"] | true) && reply["ok"].as<bool>();
             if (reboot) remote_config_reboot_at = millis() + 2000;
             reply["reboot"] = reboot;
