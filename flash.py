@@ -2,7 +2,7 @@
 """
 RTNode-HeltecV4 Flash Utility
 
-Flash the RTNode-HeltecV4 transport node firmware to a Heltec WiFi LoRa 32 V3 or V4.
+Flash the RTNode-HeltecV4 transport node firmware to a Heltec WiFi LoRa 32 V3, V4 or V4-R8.
 No PlatformIO required — just Python 3 and a USB cable.
 
 By default, downloads the latest Beta firmware from GitHub Releases (if newer than
@@ -22,6 +22,9 @@ Usage:
 
     # Update firmware — V3
     python flash.py --board v3
+
+    # Update firmware — V4-R8 (ESP32-S3R8, 8MB octal PSRAM)
+    python flash.py --board v4r8
 
     # Flash a specific Beta release version
     python flash.py --release v1.0.12
@@ -100,6 +103,21 @@ BOARD_PROFILES = {
                 "build_dir":    ".pio/build/rtnode_heltec_v4",
                 "firmware_bin": "rtnode_heltec_v4.bin",
                 "merged_bin":   "rtnode_heltec_v4_merged.bin",
+            },
+        },
+    },
+    "v4r8": {
+        "name":      "Heltec WiFi LoRa 32 V4-R8",
+        "chip":      "ESP32-S3",   # ESP32-S3R8: 8MB octal PSRAM, 16MB quad flash
+        "baud_rate": "921600",
+        # Same DIO image-header rationale as v4 above.
+        "flash_mode": "dio",
+        "flash_variants": {
+            "16MB": {
+                "pio_env":      "rtnode_heltec_v4_r8",
+                "build_dir":    ".pio/build/rtnode_heltec_v4_r8",
+                "firmware_bin": "rtnode_heltec_v4_r8.bin",
+                "merged_bin":   "rtnode_heltec_v4_r8_merged.bin",
             },
         },
     },
@@ -376,7 +394,7 @@ def detect_board(port, esptool_cmd):
     correct firmware variant.
 
     Returns a tuple (board_key, info_dict) on success, or (None, reason) on
-    failure.  ``board_key`` is "v3" or "v4".
+    failure.  ``board_key`` is "v3", "v4" or "v4r8".
     """
     info, err = read_flash_info(port, esptool_cmd)
     if not info:
@@ -386,10 +404,13 @@ def detect_board(port, esptool_cmd):
     features = info.get("features", "")
 
     if "ESP32-S3" in chip_str:
-        # Both V3 and V4 are ESP32-S3. Distinguish by PSRAM presence.
-        # V4 (ESP32-S3FH4R2): features includes "Embedded PSRAM"
+        # V3, V4 and V4-R8 are all ESP32-S3. Distinguish by PSRAM presence/size.
+        # V4-R8 (ESP32-S3R8): features includes "Embedded PSRAM 8MB" (octal)
+        # V4 (ESP32-S3FH4R2): features includes "Embedded PSRAM 2MB" (quad)
         # V3 (ESP32-S3FN8):   features has no PSRAM entry
-        if "PSRAM" in features.upper():
+        if "PSRAM 8MB" in features.upper():
+            board_key = "v4r8"
+        elif "PSRAM" in features.upper():
             board_key = "v4"
         else:
             board_key = "v3"
@@ -397,8 +418,8 @@ def detect_board(port, esptool_cmd):
         board_key = "v3"
     else:
         return None, (
-            f"Unknown chip '{chip_str}' — expected ESP32-S3 (V3/V4) or ESP32.\n"
-            f"Use --board v3 or --board v4 to specify manually."
+            f"Unknown chip '{chip_str}' — expected ESP32-S3 (V3/V4/V4-R8) or ESP32.\n"
+            f"Use --board v3, --board v4 or --board v4r8 to specify manually."
         )
 
     return board_key, info
@@ -1220,7 +1241,7 @@ def _monitor_boot(port, timeout=8):
 def main():
     global _board, _detected_flash_size
     parser = argparse.ArgumentParser(
-        description="RTNode-HeltecV4 Flash Utility — flash transport node firmware to Heltec V3/V4",
+        description="RTNode-HeltecV4 Flash Utility — flash transport node firmware to Heltec V3/V4/V4-R8",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1232,6 +1253,8 @@ Examples:
       Prefer a host-installed esptool over the bundled Release copy.
   python flash.py --board v3
       Download latest firmware and flash a V3 board.
+  python flash.py --board v4r8
+      Download latest firmware and flash a V4-R8 board.
   python flash.py --release v1.0.12
       Flash a specific Beta release tag.
   python flash.py --full
@@ -1248,8 +1271,9 @@ Examples:
       Erase flash first, then do a full flash.
         """,
     )
-    parser.add_argument("--board", choices=["v3", "v4"], default=None,
-                        help="Target board: v3 (Heltec V3) or v4 (Heltec V4). "
+    parser.add_argument("--board", choices=["v3", "v4", "v4r8"], default=None,
+                        help="Target board: v3 (Heltec V3), v4 (Heltec V4) or "
+                             "v4r8 (Heltec V4-R8, 8MB octal PSRAM). "
                              "Auto-detected from connected device if omitted.")
     parser.add_argument("--file", "-f", help="Path to firmware binary to flash")
     parser.add_argument("--port", "-p", help="Serial port (auto-detected if omitted)")
@@ -1322,7 +1346,7 @@ Examples:
         _early_port = args.port or find_serial_port()
         if not _early_port:
             print("No serial port detected and no --board specified.")
-            print(f"Defaulting to {DEFAULT_BOARD}. Specify with --board v3 or --board v4.")
+            print(f"Defaulting to {DEFAULT_BOARD}. Specify with --board v3, --board v4 or --board v4r8.")
             _board = DEFAULT_BOARD
         else:
             print(f"Detecting board on {_early_port}...")
@@ -1341,7 +1365,7 @@ Examples:
             else:
                 reason = info  # info is the error reason when board_key is None
                 print(f"  Auto-detect failed: {reason}")
-                print(f"  Defaulting to {DEFAULT_BOARD}. Specify with --board v3 or --board v4.")
+                print(f"  Defaulting to {DEFAULT_BOARD}. Specify with --board v3, --board v4 or --board v4r8.")
                 _board = DEFAULT_BOARD
 
     baud = args.baud or BAUD_RATE()

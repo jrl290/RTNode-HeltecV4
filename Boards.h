@@ -416,13 +416,24 @@
       #define PIN_WAKEUP GPIO_NUM_0
       #define WAKEUP_LEVEL 0
       #define OCP_TUNED 0x18
-      #define Vext GPIO_NUM_36
+      // V4-R8 (ESP32-S3R8, 8MB octal PSRAM): GPIO33-37 are taken by the
+      // OPI PSRAM bus, so Heltec moved Vext_Ctrl to GPIO40 and the LED to
+      // GPIO46. ADC_Ctrl (GPIO37) is gone — the VBAT divider is always on.
+      // The FEM is KCT8103L only, so GPIO46 is never used as GC1109 CPS.
+      #if defined(HELTEC_V4_R8)
+        #define Vext GPIO_NUM_40
+      #else
+        #define Vext GPIO_NUM_36
+      #endif
 
       const int pin_btn_usr1 = 0;
 
       #if defined(EXTERNAL_LEDS)
         const int pin_led_rx = 13;
         const int pin_led_tx = 14;
+      #elif defined(HELTEC_V4_R8)
+        const int pin_led_rx = 46;
+        const int pin_led_tx = 46;
       #else
         const int pin_led_rx = 35;
         const int pin_led_tx = 35;

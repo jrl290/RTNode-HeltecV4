@@ -103,7 +103,7 @@ def device_provision(env):
         env.Execute("rnodeconf --product e0 --model e9 --hwrev 1 --rom " + env.subst("$UPLOAD_PORT"))
     elif variant in ("lora32v21", "lora32v21_local"):
         env.Execute("rnodeconf --product b1 --model b9 --hwrev 1 --rom " + env.subst("$UPLOAD_PORT"))
-    elif variant in ("heltec32v4", "heltec_v4"):
+    elif variant in ("heltec32v4", "heltec_v4", "heltec_v4_r8"):
         env.Execute("rnodeconf --product b1 --model b9 --hwrev 1 --rom " + env.subst("$UPLOAD_PORT"))
     elif variant in ("rak4631", "rak4631_local"):
         env.Execute("rnodeconf --product 10 --model 12 --hwrev 1 --rom " + env.subst("$UPLOAD_PORT"))

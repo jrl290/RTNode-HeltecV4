@@ -376,7 +376,11 @@ int sx126x::begin(long frequency) {
         pinMode(LORA_PA_PWR_EN, OUTPUT);
         pinMode(LORA_PA_CSD, INPUT);
         digitalWrite(LORA_PA_PWR_EN, HIGH); delay(5);
+        #if defined(HELTEC_V4_R8)
+        if (true) {  // R8 is KCT8103L-only (schematic HTIT-WBR8H V4.3.2)
+        #else
         if (digitalRead(LORA_PA_CSD) == HIGH) {
+        #endif
           lora_pa_model = LORA_PA_KCT8103L;
           lora_lna_gain = LORA_LNA_KCT8103L_GAIN;
         } else {

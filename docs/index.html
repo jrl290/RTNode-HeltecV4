@@ -420,6 +420,13 @@
       updateAddr: 0x10000,
       fullAddr:   0x0,
     },
+    v4r8: {
+      label:      'Heltec V4-R8 (8MB octal PSRAM)',
+      updateName: 'rtnode_heltec_v4_r8.bin',
+      fullName:   'rtnode_heltec_v4_r8_merged.bin',
+      updateAddr: 0x10000,
+      fullAddr:   0x0,
+    },
     v3: {
       label:      'Heltec V3 (DIO)',
       updateName: 'rtnode_heltec_v3.bin',
@@ -493,8 +500,10 @@
   // ── Detection — mirrors detect_board() in flash.py ─────────────────────────
   function detectBoard(chipName, features) {
     if (chipName.includes('ESP32-S3')) {
-      const hasPsram = features.some(f => String(f).toUpperCase().includes('PSRAM'));
-      return hasPsram ? 'v4' : 'v3';
+      // V4-R8 (ESP32-S3R8) reports "Embedded PSRAM 8MB", V4 "Embedded PSRAM 2MB".
+      const psram = features.map(f => String(f).toUpperCase()).filter(f => f.includes('PSRAM'));
+      if (psram.some(f => f.includes('8MB'))) return 'v4r8';
+      return psram.length ? 'v4' : 'v3';
     }
     return 'v3';
   }

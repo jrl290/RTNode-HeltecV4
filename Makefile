@@ -299,14 +299,17 @@ check-release-version:
 		echo "Version check passed: FW_RELEASE_TAG=$$fw_tag RELEASE_TAG=$(RELEASE_TAG)"
 
 release-pio:
-	pio run -e rtnode_heltec_v4 -e rtnode_heltec_v3
+	pio run -e rtnode_heltec_v4 -e rtnode_heltec_v4_r8 -e rtnode_heltec_v3
 	python3 flash.py --board v4 --merge-only --offline
+	python3 flash.py --board v4r8 --merge-only --offline
 	python3 flash.py --board v3 --merge-only --offline
 	python3 -c "\
 import zipfile, os, sys; \
 variants = [ \
     ('.pio/build/rtnode_heltec_v4', 'rtnode_heltec_v4.bin'), \
     ('.pio/build/rtnode_heltec_v4', 'rtnode_heltec_v4_merged.bin'), \
+    ('.pio/build/rtnode_heltec_v4_r8', 'rtnode_heltec_v4_r8.bin'), \
+    ('.pio/build/rtnode_heltec_v4_r8', 'rtnode_heltec_v4_r8_merged.bin'), \
     ('.pio/build/rtnode_heltec_v3', 'rtnode_heltec_v3.bin'), \
     ('.pio/build/rtnode_heltec_v3', 'rtnode_heltec_v3_merged.bin'), \
 ]; \
