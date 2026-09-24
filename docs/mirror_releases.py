@@ -36,6 +36,8 @@ ASSET_NAMES = (
     "rtnode_heltec_v3_merged.bin",
     "rtnode_heltec_v4.bin",
     "rtnode_heltec_v4_merged.bin",
+    "rtnode_heltec_v4_r8.bin",
+    "rtnode_heltec_v4_r8_merged.bin",
 )
 EXCLUDED_TAGS = {
     "v1.0.31",

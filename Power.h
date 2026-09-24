@@ -137,7 +137,9 @@ float pmu_temperature = PMU_TEMP_MIN-1;
   #define BAT_V_FLOAT     4.33
   #define BAT_SAMPLES     7
   const uint8_t pin_vbat = 1;
-  const uint8_t pin_ctrl = 37;
+  #if !defined(HELTEC_V4_R8)
+    const uint8_t pin_ctrl = 37;
+  #endif
   float bat_p_samples[BAT_SAMPLES];
   float bat_v_samples[BAT_SAMPLES];
   uint8_t bat_samples_count = 0;
@@ -436,8 +438,10 @@ bool init_pmu() {
     digitalWrite(pin_ctrl, pin_ctrl_active);
     return true;
   #elif BOARD_MODEL == BOARD_HELTEC32_V4
-    pinMode(pin_ctrl,OUTPUT);
-    digitalWrite(pin_ctrl, HIGH);
+    #if !defined(HELTEC_V4_R8)
+      pinMode(pin_ctrl,OUTPUT);
+      digitalWrite(pin_ctrl, HIGH);
+    #endif
     return true;
   #elif BOARD_MODEL == BOARD_HELTEC_T114
     pinMode(pin_ctrl,OUTPUT);

@@ -36,22 +36,22 @@ Built on [microReticulum](https://github.com/attermann/microReticulum) (a C++ po
 - **Optional local TCP server** — serve local devices on your WiFi in addition to the backbone connection
 - **Automatic reconnection** — WiFi and TCP connections recover from drops with exponential backoff
 - **ESP32 memory-optimized** — table sizes, timeouts, and caching tuned for the constrained MCU environment
-- **Dual board support** — supports both Heltec V3 (8MB flash) and V4 (16MB flash, 2MB PSRAM) with automatic board and PSRAM detection
+- **Multi-board support** — supports Heltec V3 (8MB flash), V4 (16MB flash, 2MB PSRAM) and V4-R8 (16MB flash, 8MB octal PSRAM) with automatic board and PSRAM detection
 
 ## Hardware
 
 This firmware was designed for the **Heltec WiFi LoRa 32 V4**. This board was chosen for its 2MB PSRAM and LoRa capabilities. While the V3 is supported, it uses the ESP32-S3FN8 which has **no PSRAM**. The firmware **detects PSRAM at runtime** and allocates the TLSF memory pool from SPIRAM when available, falling back to internal SRAM (~170 KB) on boards without PSRAM.
 
-| Component | Heltec V3 | Heltec V4 |
-|-----------|-----------|----------|
-| **MCU** | ESP32-S3 (ESP32-S3FN8) | ESP32-S3 (ESP32-S3FH4R2) |
-| **Flash** | 8 MB | 16 MB |
-| **PSRAM** | None | 2 MB (QSPI) |
-| **Radio** | SX1262 | SX1262 + PA (see below) |
-| **TX Power** | Up to 22 dBm | Up to 28 dBm |
-| **Display** | SSD1306 OLED 128×64 | SSD1306 OLED 128×64 |
-| **WiFi** | 2.4 GHz 802.11 b/g/n | 2.4 GHz 802.11 b/g/n |
-| **USB** | Native USB CDC | Native USB CDC |
+| Component | Heltec V3 | Heltec V4 | Heltec V4-R8 |
+|-----------|-----------|----------|--------------|
+| **MCU** | ESP32-S3 (ESP32-S3FN8) | ESP32-S3 (ESP32-S3FH4R2) | ESP32-S3 (ESP32-S3R8) |
+| **Flash** | 8 MB | 16 MB | 16 MB |
+| **PSRAM** | None | 2 MB (QSPI) | 8 MB (octal / OPI) |
+| **Radio** | SX1262 | SX1262 + PA (see below) | SX1262 + KCT8103L PA |
+| **TX Power** | Up to 22 dBm | Up to 28 dBm | Up to 28 dBm |
+| **Display** | SSD1306 OLED 128×64 | SSD1306 OLED 128×64 | SSD1306 OLED 128×64 |
+| **WiFi** | 2.4 GHz 802.11 b/g/n | 2.4 GHz 802.11 b/g/n | 2.4 GHz 802.11 b/g/n |
+| **USB** | Native USB CDC | Native USB CDC | Native USB CDC |
 
 The Heltec V4 has two board revisions that use different front-end modules. The firmware auto-detects the FEM type at boot:
 
@@ -62,13 +62,15 @@ The Heltec V4 has two board revisions that use different front-end modules. The 
 
 A single `rtnode_heltec_v4` binary runs correctly on both revisions.
 
+The **V4-R8** needs its own `rtnode_heltec_v4_r8` binary. Its octal PSRAM occupies GPIO33–37, so Heltec moved Vext_Ctrl to GPIO40 and the LED to GPIO46, and removed ADC_Ctrl (the VBAT divider on GPIO1 is always on). The FEM is always KCT8103L. Do not flash the plain V4 binary on an R8: it cannot initialise the octal PSRAM and drives the wrong Vext/LED pins.
+
 ## Quick Start
 
 ### Option A: Web Flasher (easiest — no tools required)
 
 Open **[jrl290.github.io/RTNode-HeltecV4](https://jrl290.github.io/RTNode-HeltecV4/)** in Chrome or Edge, connect your RTNode via USB, and follow the two-step flow:
 
-1. **Detect** — click *Detect* and select your device from the browser's serial port picker. The flasher identifies the board (V3 or V4) automatically using PSRAM detection.
+1. **Detect** — click *Detect* and select your device from the browser's serial port picker. The flasher identifies the board (V3, V4 or V4-R8) automatically using PSRAM detection.
 2. **Flash** — choose *Update firmware* (app only, settings preserved) or *Full install* (erases everything — use for first-time installs), then click *Flash Firmware*.
 
 The web flasher presents all published firmware versions as **Beta** so the light-testing status is visible at selection time.
@@ -86,7 +88,7 @@ git clone https://github.com/jrl290/RTNode-HeltecV4.git
 cd RTNode-HeltecV4
 
 # Download the latest Beta firmware from GitHub Releases and flash
-# (auto-detects V3 vs V4 from flash size)
+# (auto-detects V3 / V4 / V4-R8 from the chip's PSRAM)
 python flash.py
 
 # Optional: use your machine's installed esptool instead of the bundled copy
@@ -95,6 +97,7 @@ python flash.py --use-system-esptool
 # Or specify board explicitly
 python flash.py --board v3
 python flash.py --board v4
+python flash.py --board v4r8
 
 # Or flash a local binary
 python flash.py --file rtnode_heltec_v4.bin
@@ -102,7 +105,7 @@ python flash.py --file rtnode_heltec_v4.bin
 
 By default, `flash.py` uses the bundled `Release/esptool/esptool.py` for reproducible flashing and labels fetched GitHub firmware as **Beta**. Only use `--use-system-esptool` if you explicitly want to override that with a host-installed esptool.
 
-The flash utility auto-detects whether a V3 or V4 is connected by querying the flash size (8MB = V3, 16MB = V4). You can override with `--board v3` or `--board v4`. It will list all available serial ports and prompt you to choose one. If no ports are detected, you may need to hold the **BOOT** button while pressing **RESET** to enter download mode.
+The flash utility auto-detects whether a V3, V4 or V4-R8 is connected from the chip's embedded PSRAM (none = V3, 2MB = V4, 8MB = V4-R8). You can override with `--board v3`, `--board v4` or `--board v4r8`. It will list all available serial ports and prompt you to choose one. If no ports are detected, you may need to hold the **BOOT** button while pressing **RESET** to enter download mode.
 
 ### Option C: Build from Source (PlatformIO)
 
@@ -116,6 +119,9 @@ cd RTNode-HeltecV4
 
 # Build for V4
 pio run -e rtnode_heltec_v4
+
+# Build for V4-R8
+pio run -e rtnode_heltec_v4_r8
 
 # Build for V3
 pio run -e rtnode_heltec_v3
@@ -392,8 +398,8 @@ Set the transport node's **Local TCP Server** to **Enabled** (port 4242).
 | `Display.h` | OLED display layout — transport node status page |
 | `flash.py` | Python CLI flash utility — list serial ports, download from GitHub, merge & flash firmware |
 | `docs/index.html` | Browser-based web flasher — auto-detects board, two-step Detect + Flash UI, no Python required |
-| `Boards.h` | Board variant definitions for V3 and V4 |
-| `platformio.ini` | Build targets: `rtnode_heltec_v3`, `rtnode_heltec_v4`, and `rtnode_heltec_v4-local` |
+| `Boards.h` | Board variant definitions for V3, V4 and V4-R8 (`HELTEC_V4_R8`) |
+| `platformio.ini` | Build targets: `rtnode_heltec_v3`, `rtnode_heltec_v4`, `rtnode_heltec_v4_r8`, and `rtnode_heltec_v4-local` |
 
 ### Library Patches
 

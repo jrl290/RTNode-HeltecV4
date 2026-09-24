@@ -3074,7 +3074,9 @@ void sleep_now() {
       #if BOARD_MODEL == BOARD_HELTEC32_V4
           headless_led_off();
           headless_led_detach_pwm();
-          digitalWrite(LORA_PA_CPS, LOW);
+          #if !defined(HELTEC_V4_R8)
+            digitalWrite(LORA_PA_CPS, LOW);
+          #endif
           if (lora_pa_model == LORA_PA_KCT8103L) {
             // V4.3 KCT8103L: drop CTX so the FEM is in a known low state.
             digitalWrite(LORA_PA_CTX, LOW);
