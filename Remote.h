@@ -50,7 +50,7 @@ bool wifi_init_ran = false;
 bool wifi_initialized = false;
 
 char wr_ssid[33];
-char wr_psk[33];
+char wr_psk[64];
 
 extern void host_disconnected();
 

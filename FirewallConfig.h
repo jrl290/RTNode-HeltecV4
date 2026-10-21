@@ -123,7 +123,7 @@ static uint8_t config_default_display_rotation() {
 static void config_send_html() {
     // Read current values from EEPROM/globals for pre-population
     char cur_ssid[33] = "";
-    char cur_psk[33]  = "";
+    char cur_psk[64]  = "";
 
     for (int i = 0; i < 32; i++) {
         cur_ssid[i] = EEPROM.read(config_addr(ADDR_CONF_SSID + i));
@@ -131,11 +131,11 @@ static void config_send_html() {
     }
     cur_ssid[32] = '\0';
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 63; i++) {
         cur_psk[i] = EEPROM.read(config_addr(ADDR_CONF_PSK + i));
         if (cur_psk[i] == (char)0xFF) cur_psk[i] = '\0';
     }
-    cur_psk[32] = '\0';
+    cur_psk[63] = '\0';
 
     // Current LoRa values (from globals, which were loaded from EEPROM)
     uint32_t cur_freq = lora_freq;
@@ -287,7 +287,7 @@ static void config_send_html() {
     html += F(
         "'>"
         "<label>Password</label>"
-        "<input name='psk' type='password' maxlength='32' placeholder='WiFi password' value='"
+        "<input name='psk' type='password' maxlength='63' placeholder='WiFi password' value='"
     );
     html += String(cur_psk);
     html += F("'>");
@@ -698,11 +698,11 @@ static void config_handle_save() {
     EEPROM.write(config_addr(ADDR_CONF_SSID + 32), 0x00);
 
     // Write PSK
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 63; i++) {
         uint8_t c = (i < (int)psk.length()) ? psk[i] : 0x00;
         EEPROM.write(config_addr(ADDR_CONF_PSK + i), c);
     }
-    EEPROM.write(config_addr(ADDR_CONF_PSK + 32), 0x00);
+    EEPROM.write(config_addr(ADDR_CONF_PSK + 63), 0x00);
 
     // Set WiFi mode to STA
     EEPROM.write(eeprom_addr(ADDR_CONF_WIFI), WR_WIFI_STA);

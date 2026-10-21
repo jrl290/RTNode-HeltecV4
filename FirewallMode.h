@@ -75,25 +75,25 @@
 #define ADDR_CONF_AP_TCP_EN  0x90  // AP TCP server enable (1 byte, 0x73 = enabled)
 #define ADDR_CONF_AP_TCP_PORT 0x91 // AP TCP server port (2 bytes, big-endian)
 #define ADDR_CONF_AP_SSID    0x93  // AP SSID (33 bytes, null-terminated)
-#define ADDR_CONF_AP_PSK     0xB4  // AP PSK (33 bytes, null-terminated)
-#define ADDR_CONF_WIFI_EN   0xD5  // WiFi enable flag (1 byte, 0x73 = enabled)
+#define ADDR_CONF_AP_PSK     0xB4  // AP PSK (64 bytes, null-terminated)
+#define ADDR_CONF_WIFI_EN   0xF4  // WiFi enable flag (1 byte, 0x73 = enabled)
 // IFAC (Interface Access Code) settings for LoRa interface
-#define ADDR_CONF_IFAC_EN   0xD6  // IFAC enable flag (1 byte, 0x73 = enabled)
-#define ADDR_CONF_IFAC_NAME 0xD7  // Network name (33 bytes, null-terminated)
-#define ADDR_CONF_IFAC_PASS 0xF8  // Passphrase (33 bytes, null-terminated)
-#define ADDR_CONF_APP_MARKER0 0x119 // RTNode app marker byte 0
-#define ADDR_CONF_APP_MARKER1 0x11A // RTNode app marker byte 1
-#define ADDR_CONF_APP_VERSION 0x11B // RTNode app config version
+#define ADDR_CONF_IFAC_EN   0xF5  // IFAC enable flag (1 byte, 0x73 = enabled)
+#define ADDR_CONF_IFAC_NAME 0xF6  // Network name (33 bytes, null-terminated)
+#define ADDR_CONF_IFAC_PASS 0x117 // Passphrase (33 bytes, null-terminated)
+#define ADDR_CONF_APP_MARKER0 0x138 // RTNode app marker byte 0
+#define ADDR_CONF_APP_MARKER1 0x139 // RTNode app marker byte 1
+#define ADDR_CONF_APP_VERSION 0x13A // RTNode app config version
 // Device advertisement settings (advertise this node's parameters and
 // optional GPS coordinates to the Reticulum network so external maps such
 // as rmap.world can pin it). Stored after the app version markers so the
 // existing layout is preserved and old saves keep working (uninitialised
 // 0xFF bytes are interpreted as "advertisement disabled, no coordinates").
-#define ADDR_CONF_ADVERT_EN     0x11C // Advertise enable flag (1 byte, 0x73 = enabled)
-#define ADDR_CONF_ADVERT_LAT    0x11D // Latitude as IEEE-754 double (8 bytes, host byte order)
-#define ADDR_CONF_ADVERT_LON    0x125 // Longitude as IEEE-754 double (8 bytes, host byte order)
-#define ADDR_CONF_ADVERT_JITTER 0x12D // Randomize ~0.5 km offset flag (1 byte, 0x73 = enabled)
-#define ADDR_CONF_NODE_NAME     0x12E // Node display name (33 bytes, null-terminated)
+#define ADDR_CONF_ADVERT_EN     0x13B // Advertise enable flag (1 byte, 0x73 = enabled)
+#define ADDR_CONF_ADVERT_LAT    0x13C // Latitude as IEEE-754 double (8 bytes, host byte order)
+#define ADDR_CONF_ADVERT_LON    0x144 // Longitude as IEEE-754 double (8 bytes, host byte order)
+#define ADDR_CONF_ADVERT_JITTER 0x14C // Randomize ~0.5 km offset flag (1 byte, 0x73 = enabled)
+#define ADDR_CONF_NODE_NAME     0x14D // Node display name (33 bytes, null-terminated)
 // Airtime (duty-cycle) limits. Stored as 1 byte each, in units of 0.1%
 // (so byte value 10 = 1.0%, byte value 100 = 10.0%; max 25.0% per byte).
 // 0xFF (uninitialised) or 0 = disabled. When the measured short-term
@@ -101,20 +101,20 @@
 // LoRa TX is paused (airtime_lock) until the rolling window drops below
 // the threshold again. Useful for self-imposed regional duty-cycle
 // budgets (e.g. EU868 = 1.0% long-term).
-#define ADDR_CONF_ST_AL         0x14F // Short-term airtime limit (1 byte, percent * 10)
-#define ADDR_CONF_LT_AL         0x150 // Long-term  airtime limit (1 byte, percent * 10)
-#define ADDR_CONF_MDNS_EN       0x151 // mDNS enable flag (1 byte; 0x73 = enabled, 0xFF = unset/default-enabled)
-#define ADDR_CONF_MDNS_NAME     0x152 // Custom mDNS hostname (33 bytes, null-terminated; empty = auto)
-#define ADDR_CONF_PROBE_EN      0x23C // rnprobe responder enable (1 byte; 0x73 = enabled, 0xFF = unset/disabled)
-#define ADDR_CONF_ADVERT_IFAC   0x23D // Publish IFAC name + passphrase in adverts (1 byte; 0x73 = yes, 0xFF = unset = no)
-#define ADDR_CONF_BLE_EN        0x23E // Bluetooth peers (1 byte; 0x00 = off, 0x73 or 0xFF = unset = on)
+#define ADDR_CONF_ST_AL         0x16E // Short-term airtime limit (1 byte, percent * 10)
+#define ADDR_CONF_LT_AL         0x16F // Long-term  airtime limit (1 byte, percent * 10)
+#define ADDR_CONF_MDNS_EN       0x170 // mDNS enable flag (1 byte; 0x73 = enabled, 0xFF = unset/default-enabled)
+#define ADDR_CONF_MDNS_NAME     0x171 // Custom mDNS hostname (33 bytes, null-terminated; empty = auto)
+#define ADDR_CONF_PROBE_EN      0x25B // rnprobe responder enable (1 byte; 0x73 = enabled, 0xFF = unset/disabled)
+#define ADDR_CONF_ADVERT_IFAC   0x25C // Publish IFAC name + passphrase in adverts (1 byte; 0x73 = yes, 0xFF = unset = no)
+#define ADDR_CONF_BLE_EN        0x25D // Bluetooth peers (1 byte; 0x00 = off, 0x73 or 0xFF = unset = on)
 // Extra backbone slots 1-3 (slot 0 remains in the legacy BTCP/BHOST/BHPORT
 // fields for backward compatibility with existing devices).
-#define ADDR_CONF_BSLOT_BASE    0x173
+#define ADDR_CONF_BSLOT_BASE    0x192
 #define ADDR_CONF_BSLOT_EN(slot)   (ADDR_CONF_BSLOT_BASE + ((slot) - 1) * FIREWALL_BACKBONE_SLOT_BYTES)
 #define ADDR_CONF_BSLOT_HOST(slot) (ADDR_CONF_BSLOT_EN(slot) + 1)
 #define ADDR_CONF_BSLOT_PORT(slot) (ADDR_CONF_BSLOT_HOST(slot) + FIREWALL_BACKBONE_HOST_LEN)
-// Total: 0x23E (574 bytes — still within the extended CONFIG area used on ESP32)
+// Total: 0x25D (605 bytes — still within the extended CONFIG area used on ESP32)
 
 #define FIREWALL_ENABLE_BYTE 0x73
 #define FIREWALL_APP_MARKER0 0x52
@@ -140,7 +140,7 @@ struct FirewallState {
     bool     ap_tcp_enabled;  // Whether to run a WiFi AP with TCP server
     uint16_t ap_tcp_port;     // Port for the AP TCP server
     char     ap_ssid[33];     // AP SSID
-    char     ap_psk[33];      // AP PSK (empty = open)
+    char     ap_psk[64];      // AP PSK (empty = open)
 
     // IFAC settings for LoRa interface
     bool     ifac_enabled;    // Whether IFAC is configured
@@ -386,11 +386,11 @@ inline void firewall_load_config() {
     }
     firewall_state.ap_ssid[32] = '\0';
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 63; i++) {
         firewall_state.ap_psk[i] = EEPROM.read(config_addr(ADDR_CONF_AP_PSK + i));
         if (firewall_state.ap_psk[i] == (char)0xFF) firewall_state.ap_psk[i] = '\0';
     }
-    firewall_state.ap_psk[32] = '\0';
+    firewall_state.ap_psk[63] = '\0';
 
     // Load IFAC settings
     firewall_state.ifac_enabled =
@@ -528,10 +528,10 @@ inline void firewall_save_config() {
         EEPROM.write(config_addr(ADDR_CONF_AP_SSID + i), firewall_state.ap_ssid[i]);
     }
     EEPROM.write(config_addr(ADDR_CONF_AP_SSID + 32), 0x00);
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 63; i++) {
         EEPROM.write(config_addr(ADDR_CONF_AP_PSK + i), firewall_state.ap_psk[i]);
     }
-    EEPROM.write(config_addr(ADDR_CONF_AP_PSK + 32), 0x00);
+    EEPROM.write(config_addr(ADDR_CONF_AP_PSK + 63), 0x00);
 
     // IFAC settings
     EEPROM.write(config_addr(ADDR_CONF_IFAC_EN),
