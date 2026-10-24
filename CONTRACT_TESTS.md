@@ -174,6 +174,34 @@ All on `bench/instrumentation`, found by these suites:
    packet and link request sent again, and every packet of their link.
    `bench_lora_neighbour.py` showed all three on air, and passes now.
 
+## Found and fixed, 2026-10-24
+
+**The temperature read hung the radio** (`init_pmu()` in `Power.h`). Every
+ESP32-S3 build read the chip's temperature sensor once a second
+(`update_pmu()` → Arduino's `temperatureRead()`), although firewall mode
+sends no KISS frames and so never reports it. The radio code (the PHY) reads
+the same sensor on core 0, about 1.5 times a second on the bench, for WiFi's
+TX power control and Bluetooth's clock tracking; it holds `rtc_spinlock`
+with interrupts off while it waits for the conversion. `temperatureRead()`
+configures and restarts the sensor on every call, and `temp_sensor_set_config()`
+and `temp_sensor_start()` rewrite the sensor's control register without that
+lock. One landing inside the PHY's wait clears the conversion bit; the
+conversion never finishes and the interrupt watchdog reboots the node. The
+V4.2 bench build rebooted this way once in about 50 minutes with WiFi on.
+Firewall builds no longer start the sensor; RNode builds are unchanged.
+
+The panic shows it: core 0 in `temperature_sensor_get_raw_value()` polling
+the ready bit, with `SENS_SAR_TCTRL` = `0x00c19083` (sensor powered, ready
+clear, conversion bit cleared), and core 1 in `temperatureRead()` waiting
+for the lock. A test build reproduced it (local branch `scratch/temp-read-hammer`, not pushed). It
+counts raw reads per core (`-Wl,--wrap=temp_sensor_get_raw_value`) and runs
+`temperatureRead()`'s unlocked calls back to back on core 1, about 30,000 a
+second. It hung four times in 11 minutes of running (5 to 526 s after each
+boot's start) with the same register value, two through WiFi and two
+through the Bluetooth controller, so either radio alone can hit it. Reading
+the temperature on every loop pass (~1,270 a second) did not reproduce it in
+53 minutes: the window is a few instructions wide.
+
 ## Open
 
 - **Loop time.** `[STALL]` and `[RES]` now attribute time to `rx` (Reticulum
@@ -230,13 +258,6 @@ All on `bench/instrumentation`, found by these suites:
 - **README's interface modes are stale**: it says LoRa is `MODE_GATEWAY`
   and the backbone `MODE_BOUNDARY`; the firmware sets every interface to
   `MODE_FULL`.
-- **The temperature read can deadlock with WiFi** (2026-10-24, V4.2 bench
-  build, once in about an hour of tests): `Interrupt wdt timeout on CPU0`,
-  then a reboot. The loop's `update_pmu()` → `measure_temperature()` →
-  `temperatureRead()` waited on the temperature sensor's lock while the WiFi
-  task (`ppTask` → `tx_pwctrl_background` → `phy_get_tsens_value`) read the
-  same sensor on the other core. The call is upstream RNode code from the
-  first commit, so every release with WiFi on has it.
 - **A flood fills LoRa's announce queue.** The queue keeps the newest
   announce per destination, 64 destinations at most, sent fewest hops then
   oldest first, one per cap window (90 s at SF10). After a LAN flood (the wan
@@ -271,7 +292,7 @@ All on `bench/instrumentation`, found by these suites:
 | 2026-10-19 | 8b29734 release R8 build, saved settings 921.125 MHz SF9 CR 4/7 10 dBm | LoRa probe to a second RTNode (rnstransport.probe, through the R8's TCP server) | **20/20** | proofs back over LoRa, RTT p50 2.1 s, max 4.2 s (first, just after the far node restarted); neighbour heard at −61 dBm (nodes close together, so range is not measured); CSMA held one send while the channel was busy; loop max 143 ms, no queue drops |
 | 2026-10-19 | v1.0.52 release image (`Release/v1.0.52/rtnode_heltec_v4_r8.bin`, app-only update) on the R8 | LoRa probe to the second RTNode | **10/10** | RTT p50 2.1 s, max 2.3 s; KCT8103L selected, Bluetooth up, local TCP server on 4242, port 7633 closed |
 | 2026-10-24 | ce1232a (LoRa bitrate + 2 % announce cap) alone, on main 7ceb826; bench build on the V4.2, saved LoRa 914.875 MHz SF10 125 kHz CR 4/6 (814 bps) | announce cap (scratch version of the script) | LAN held back | relayed announces 90 s apart, but both LAN path requests made while announces were queued never reached LoRa (the one before the flood did) |
-| 2026-10-24 | + 4cfa5d4 (LAN-side path requests skip the cap; 3 h queue life) | announce cap | 4/5 | the node panicked 244 s in (temperature read against WiFi, see Open), so the spacing check saw its boot announce; the path request checks passed before it |
+| 2026-10-24 | + 4cfa5d4 (LAN-side path requests skip the cap; 3 h queue life) | announce cap | 4/5 | the node panicked 244 s in (the temperature read, see Found and fixed, 2026-10-24), so the spacing check saw its boot announce; the path request checks passed before it |
 | 2026-10-24 | same | announce cap | **5/5** | announces left LoRa 90.3, 90.3, 89.3 s apart; LAN path requests out on LoRa in 0.4–0.5 s while announces were queued; the backbone's request for a whitelisted destination was searched for and kept off LoRa; the backbone heard 5/5 flooded announces (spread over 30 s by ingress control) |
 | 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 223 ms, LAN–WAN p50 493 ms; no reboot or panic, heap min 126 KB, stall max 292 ms; during the 260-announce churn LoRa sent three relayed announces 90 s apart and dropped nothing |
 | 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | no LoRa agent or prnsd on the bench |
@@ -280,3 +301,8 @@ All on `bench/instrumentation`, found by these suites:
 | 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | |
 | 2026-10-24 | same | announce cap, again | 4/5, not a cap fault | the M5 lost its USB link to the R8 151 s in (the M5 on battery at 7 %); up to then announces 89.6 s apart, LAN path requests out in 0.5 s, the backbone's held; cap-spacing saw only the logged part |
 | 2026-10-24 | same, after the M5 was back on power | announce cap, again | **5/5** | announces 90.6, 89.5, 90.5 s apart; LAN path requests out in 0.1 s; the backbone's held and searched for; backbone heard 5/5. The R8 was then put back on this branch's plain `rtnode_heltec_v4_r8` build (saved settings, backbone to the staging Pi) |
+| 2026-10-24 | 7ceb826 + temperature read on every loop pass (`scratch/temp-read-hammer` 1731158), V4.2 bench build, WiFi on | lan tcp,tcp2 back to back for 20 min, then 20 min idle | 48/48 runs 8/8, **no panic** in 53 min | the race's window is a few instructions wide; not reproduced this way |
+| 2026-10-24 | + 21ce5ea: `temperatureRead()`'s unlocked calls back to back on core 1, raw reads counted per core | idle on WiFi, 13 min | **4 panics** (5–526 s after each start) | the stock build's signature: core 0 in the PHY's sensor read, `SENS_SAR_TCTRL` 0x00c1908x; two through WiFi TX power control, two through Bluetooth's clock tracking; the PHY read ~1.5/s |
+| 2026-10-24 | the fix (ab3d2cc; 9a077fd before its merge), V4.2 bench build, WiFi on | lan tcp,tcp2 back to back for 20 min, then 20 min idle | 47/47 runs 8/8, **no panic** | |
+| 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 190 ms, stall max 270 ms, heap min 105 KB |
+| 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | 47 min up, no restart |
