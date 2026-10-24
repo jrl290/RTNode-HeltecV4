@@ -279,3 +279,4 @@ All on `bench/instrumentation`, found by these suites:
 | 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 181 ms, LAN–WAN p50 423 ms; no reboot or panic, heap min 151 KB, stall max 340 ms |
 | 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | |
 | 2026-10-24 | same | announce cap, again | 4/5, not a cap fault | the M5 lost its USB link to the R8 151 s in (the M5 on battery at 7 %); up to then announces 89.6 s apart, LAN path requests out in 0.5 s, the backbone's held; cap-spacing saw only the logged part |
+| 2026-10-24 | same, after the M5 was back on power | announce cap, again | **5/5** | announces 90.6, 89.5, 90.5 s apart; LAN path requests out in 0.1 s; the backbone's held and searched for; backbone heard 5/5. The R8 was then put back on this branch's plain `rtnode_heltec_v4_r8` build (saved settings, backbone to the staging Pi) |
