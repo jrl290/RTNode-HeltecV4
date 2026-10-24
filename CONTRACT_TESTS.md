@@ -79,6 +79,20 @@ Results go to `tests/bench-results/<time>-contracts-<suite>/results.json`.
 | wan-reaches-quiet-lan | after the churn, `w` can still open a link to `a`, which has stayed quiet |
 | wan-flood | a WAN agent announces fresh destinations at 20/s for 60 s: no LAN agent hears one, echoes on a LAN–WAN and a LAN–LAN link keep coming back (≥ 90 %), the node neither reboots nor panics |
 
+**announce cap** (`tests/bench_announce_cap.py`), a LAN agent on the local TCP
+server and a WAN agent on the stand-in backbone, with the node's serial log.
+LoRa (under 50 kbps) sends a relayed announce only once the previous one has
+had tx_time / 2 % to clear; the rest queue. LAN-side path requests are never
+held back; backbone ones wait for the cap:
+
+| Check | Passes when |
+|---|---|
+| cap-spacing | the LAN's five fresh announces leave LoRa at least a cap window apart (`--window`; 90 s for 183 B at 814 bps) |
+| lan-preq-out | LAN path requests for unknown destinations go out on LoRa within 5 s while those announces are queued |
+| wan-preq-held | a backbone path request for a whitelisted unknown destination is searched for (DISCOVERY-EXPIRED) but not sent on LoRa in that window |
+| wan-uncapped | the backbone hears every flooded announce |
+| node-stayed-up | the node neither panics nor restarts during the run |
+
 **soak**, all at once for `--soak-s`:
 
 | Flow | Traffic | Passes when |
@@ -216,6 +230,21 @@ All on `bench/instrumentation`, found by these suites:
 - **README's interface modes are stale**: it says LoRa is `MODE_GATEWAY`
   and the backbone `MODE_BOUNDARY`; the firmware sets every interface to
   `MODE_FULL`.
+- **The temperature read can deadlock with WiFi** (2026-10-24, V4.2 bench
+  build, once in about an hour of tests): `Interrupt wdt timeout on CPU0`,
+  then a reboot. The loop's `update_pmu()` → `measure_temperature()` →
+  `temperatureRead()` waited on the temperature sensor's lock while the WiFi
+  task (`ppTask` → `tx_pwctrl_background` → `phy_get_tsens_value`) read the
+  same sensor on the other core. The call is upstream RNode code from the
+  first commit, so every release with WiFi on has it.
+- **A flood fills LoRa's announce queue.** The queue keeps the newest
+  announce per destination, 64 destinations at most, sent fewest hops then
+  oldest first, one per cap window (90 s at SF10). After a LAN flood (the wan
+  suite's 260-announce churn) a real LAN device's announce can wait for LoRa
+  behind up to ~96 minutes of stale ones, or miss LoRa while the queue is
+  full; other interfaces still get it at once. The
+  reference does the same with a larger queue; nothing seen in use needs
+  more.
 
 ## Results log
 
@@ -241,3 +270,8 @@ All on `bench/instrumentation`, found by these suites:
 | 2026-10-19 | same | lan tcp,tcp2,tcp3 | **24/24** | no LoRa radio or prnsd on the bench this time; stalls up to 3.0 s in TCP writes during the 20 kB resources (as on the V4.2) |
 | 2026-10-19 | 8b29734 release R8 build, saved settings 921.125 MHz SF9 CR 4/7 10 dBm | LoRa probe to a second RTNode (rnstransport.probe, through the R8's TCP server) | **20/20** | proofs back over LoRa, RTT p50 2.1 s, max 4.2 s (first, just after the far node restarted); neighbour heard at −61 dBm (nodes close together, so range is not measured); CSMA held one send while the channel was busy; loop max 143 ms, no queue drops |
 | 2026-10-19 | v1.0.52 release image (`Release/v1.0.52/rtnode_heltec_v4_r8.bin`, app-only update) on the R8 | LoRa probe to the second RTNode | **10/10** | RTT p50 2.1 s, max 2.3 s; KCT8103L selected, Bluetooth up, local TCP server on 4242, port 7633 closed |
+| 2026-10-24 | ce1232a (LoRa bitrate + 2 % announce cap) alone, on main 7ceb826; bench build on the V4.2, saved LoRa 914.875 MHz SF10 125 kHz CR 4/6 (814 bps) | announce cap (scratch version of the script) | LAN held back | relayed announces 90 s apart, but both LAN path requests made while announces were queued never reached LoRa (the one before the flood did) |
+| 2026-10-24 | + 4cfa5d4 (LAN-side path requests skip the cap; 3 h queue life) | announce cap | 4/5 | the node panicked 244 s in (temperature read against WiFi, see Open), so the spacing check saw its boot announce; the path request checks passed before it |
+| 2026-10-24 | same | announce cap | **5/5** | announces left LoRa 90.3, 90.3, 89.3 s apart; LAN path requests out on LoRa in 0.4–0.5 s while announces were queued; the backbone's request for a whitelisted destination was searched for and kept off LoRa; the backbone heard 5/5 flooded announces (spread over 30 s by ingress control) |
+| 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 223 ms, LAN–WAN p50 493 ms; no reboot or panic, heap min 126 KB, stall max 292 ms; during the 260-announce churn LoRa sent three relayed announces 90 s apart and dropped nothing |
+| 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | no LoRa agent or prnsd on the bench |
