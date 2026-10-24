@@ -411,6 +411,8 @@ namespace RNS {
 		static void path_request(const Bytes& destination_hash, bool is_from_local_client, const Interface& attached_interface, const Bytes& requestor_transport_id = {}, const Bytes& tag = {});
 		static bool detach_interfaces();
 		static void drop_announce_queues();
+		static bool announce_cap_allows(const Interface& interface, const Packet& packet, double outbound_time);
+		static void process_announce_queues();
 		static uint64_t announce_emitted(const Packet& packet);
 		static void write_packet_hashlist();
 		static bool read_path_table();

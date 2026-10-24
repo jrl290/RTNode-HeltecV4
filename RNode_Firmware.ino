@@ -151,15 +151,22 @@ public:
 		_IN = true;
 		_OUT = true;
 		_HW_MTU = 508;
+		// The reference's announce cap: relayed announces use at most 2% of
+		// LoRa airtime. The bitrate it needs is kept in step in loop().
+		_announce_cap = RNS::Type::Reticulum::ANNOUNCE_CAP/100.0;
 	}
 	LoRaInterface(const char *name) : RNS::InterfaceImpl(name) {
 		_IN = true;
 		_OUT = true;
 		_HW_MTU = 508;
+		_announce_cap = RNS::Type::Reticulum::ANNOUNCE_CAP/100.0;
 	}
 	virtual ~LoRaInterface() {
 		_name = "deleted";
 	}
+	// Transport reads the bitrate for link and receipt timeouts, path scores
+	// and the announce cap; loop() keeps it in step with the radio.
+	void bitrate(uint32_t bitrate) { _bitrate = bitrate; }
 protected:
 	virtual void handle_incoming(const RNS::Bytes& data) {
     VERBOSEF("[LoRa] RX %u bytes", data.size());
@@ -273,6 +280,7 @@ void on_transmit_packet(const RNS::Bytes& raw, const RNS::Interface& interface) 
 // CBA RNS
 RNS::Reticulum reticulum(RNS::Type::NONE);
 RNS::Interface lora_interface(RNS::Type::NONE);
+LoRaInterface* lora_interface_impl = nullptr;
 RNS::FileSystem filesystem(RNS::Type::NONE);
 
 #ifdef FIREWALL_MODE
@@ -1016,7 +1024,8 @@ void setup() {
       //RNS::loglevel(RNS::LOG_MEM);
 
       HEAD("Registering LoRA Interface...", RNS::LOG_TRACE);
-      lora_interface = new LoRaInterface();
+      lora_interface_impl = new LoRaInterface();
+      lora_interface = lora_interface_impl;
       RNS::Transport::register_interface(lora_interface);
       RNS::Transport::register_local_client_interface(lora_interface);
 
@@ -2963,6 +2972,10 @@ void loop() {
 #ifdef HAS_RNS
   // CBA
   if (reticulum) {
+	  // updateBitrate() sets lora_bitrate, 0 while the radio is offline.
+	  if (lora_interface_impl && lora_interface.bitrate() != lora_bitrate) {
+		  lora_interface_impl->bitrate(lora_bitrate);
+	  }
 	  res::Timed res_jobs(res::JOBS);
 	  reticulum.loop();
   }

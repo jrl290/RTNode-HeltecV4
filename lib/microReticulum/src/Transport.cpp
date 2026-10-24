@@ -662,6 +662,8 @@ static uint32_t ingress_dropped = 0;
 				_announces_last_checked = OS::time();
 			}
 
+			process_announce_queues();
+
 			jobs_t_announces = micros();
 
 			// Cull held announces that are older than 60 seconds or if map exceeds cap
@@ -1166,14 +1168,18 @@ static uint32_t ingress_dropped = 0;
 				if (packet.packet_type() == Type::Packet::ANNOUNCE) {
 #ifdef FIREWALL_MODE
 					// Firewall mode: announce broadcasts are always allowed.
-					// No mode gating, no bandwidth caps — LAN announces go to
-					// every interface including WAN, and whitelisted WAN
-					// announces go to every LAN interface.
+					// No mode gating — LAN announces go to every interface
+					// including WAN, and whitelisted WAN announces go to every
+					// LAN interface. Only slow interfaces (LoRa) keep the
+					// reference's bandwidth cap; see announce_cap_allows().
 					if (packet.attached_interface() && interface == packet.attached_interface()) {
 						// If the announce is pinned to a specific interface,
 						// only transmit on that one.
 					} else if (!packet.attached_interface()) {
 						// No attached_interface means broadcast to all.
+						if (!announce_cap_allows(interface, packet, outbound_time)) {
+							should_transmit = false;
+						}
 					} else {
 						should_transmit = false;
 					}
@@ -3960,8 +3966,98 @@ will announce it.
 	return 0;
 }
 
+// Interfaces at or above this bitrate send relayed announces uncapped, as
+// firewall mode decided. Slower ones (LoRa) keep the reference's cap.
+static const uint32_t ANNOUNCE_CAP_MAX_BITRATE = 50000;
+// The reference queues 16384 announces; this node's RAM holds far fewer. At a
+// 2% cap LoRa sends about one relayed announce a minute, so a longer queue
+// would only hold announces that have gone stale.
+static const size_t ANNOUNCE_QUEUE_MAX = 64;
+
+// The reference's announce cap (Transport.outbound): a relayed announce may
+// go out on a slow interface only once that interface's previous one has
+// had tx_time / announce_cap to clear. Otherwise it waits in the interface's
+// queue, which keeps only the newest announce per destination. Announces
+// that originate here (hops 0) are never capped.
+/*static*/ bool Transport::announce_cap_allows(const Interface& interface, const Packet& packet, double outbound_time) {
+	if (packet.hops() == 0) return true;
+	uint32_t bitrate = interface.bitrate();
+	if (bitrate == 0 || bitrate >= ANNOUNCE_CAP_MAX_BITRATE || interface.announce_cap() <= 0) return true;
+
+	Interface& iface = const_cast<Interface&>(interface);
+	std::list<RNS::AnnounceEntry>& queue = iface.announce_queue();
+	if (queue.empty() && outbound_time > iface.announce_allowed_at()) {
+		double tx_time = (double)(packet.raw().size() * 8) / (double)bitrate;
+		iface.announce_allowed_at(outbound_time + tx_time / iface.announce_cap());
+		return true;
+	}
+
+	for (auto& entry : queue) {
+		if (entry._destination == packet.destination_hash()) {
+			uint64_t emitted = announce_emitted(packet);
+			if (emitted > entry._emitted) {
+				entry._time = outbound_time;
+				entry._hops = packet.hops();
+				entry._emitted = emitted;
+				entry._raw = packet.raw();
+			}
+			return false;
+		}
+	}
+	if (queue.size() < ANNOUNCE_QUEUE_MAX) {
+		RNS::AnnounceEntry entry(packet.destination_hash(), outbound_time, packet.hops(), announce_emitted(packet), packet.raw());
+		iface.add_announce(entry);
+		DEBUG("Announce for " + packet.destination_hash().toHex().substr(0,8) + " queued on " + iface.toString() + " by the announce cap (height " + std::to_string(queue.size()) + ")");
+	}
+	else {
+		DEBUG("Announce for " + packet.destination_hash().toHex().substr(0,8) + " dropped: announce queue on " + iface.toString() + " is full");
+	}
+	return false;
+}
+
+// The reference's Interface.process_announce_queue, run from jobs(): once an
+// interface's cap allows, send its queued announce with the fewest hops
+// (oldest first), and drop any older than QUEUED_ANNOUNCE_LIFE.
+/*static*/ void Transport::process_announce_queues() {
+	double now = OS::time();
+	for (auto& [hash, interface] : _interfaces) {
+		std::list<RNS::AnnounceEntry>& queue = interface.announce_queue();
+		if (queue.empty() || now < interface.announce_allowed_at()) continue;
+
+		queue.remove_if([now](const RNS::AnnounceEntry& entry) {
+			return now > entry._time + Type::Reticulum::QUEUED_ANNOUNCE_LIFE;
+		});
+		if (queue.empty()) continue;
+
+		auto selected = queue.begin();
+		for (auto iter = queue.begin(); iter != queue.end(); ++iter) {
+			if (iter->_hops < selected->_hops || (iter->_hops == selected->_hops && iter->_time < selected->_time)) {
+				selected = iter;
+			}
+		}
+
+		double wait_time = 0;
+		if (interface.bitrate() > 0 && interface.announce_cap() > 0) {
+			double tx_time = (double)(selected->_raw.size() * 8) / (double)interface.bitrate();
+			wait_time = tx_time / interface.announce_cap();
+		}
+		interface.announce_allowed_at(now + wait_time);
+
+		Bytes raw = selected->_raw;
+		DEBUG("Sending queued announce for " + selected->_destination.toHex().substr(0,8) + " on " + interface.toString() + " (" + std::to_string(queue.size() - 1) + " left)");
+		queue.erase(selected);
+		transmit(interface, raw);
+	}
+}
+
 /*static*/ void Transport::drop_announce_queues() {
-	// No-op in firewall mode: announce queues handled by jobs() loop
+	for (auto& [hash, interface] : _interfaces) {
+		std::list<RNS::AnnounceEntry>& queue = interface.announce_queue();
+		if (!queue.empty()) {
+			DEBUG("Dropping " + std::to_string(queue.size()) + " queued announces on " + interface.toString());
+			queue.clear();
+		}
+	}
 }
 
 /*static*/ void Transport::write_packet_hashlist() {
