@@ -306,3 +306,6 @@ the temperature on every loop pass (~1,270 a second) did not reproduce it in
 | 2026-10-24 | the fix (ab3d2cc; 9a077fd before its merge), V4.2 bench build, WiFi on | lan tcp,tcp2 back to back for 20 min, then 20 min idle | 47/47 runs 8/8, **no panic** | |
 | 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 190 ms, stall max 270 ms, heap min 105 KB |
 | 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | 47 min up, no restart |
+| 2026-10-24 | bb4794b (main with the announce cap rework and the temperature fix), V4.2 bench build | announce cap | **5/5** | announces 90.4, 89.4, 90.4 s apart; LAN path requests out in ~1 s; the backbone's held and searched for; backbone heard 5/5 |
+| 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 201 ms, LAN–WAN p50 414 ms; no reboot or panic, heap min 124 KB |
+| 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | |
