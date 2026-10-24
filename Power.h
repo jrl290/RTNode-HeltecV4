@@ -407,7 +407,13 @@ void update_pmu() {
 }
 
 bool init_pmu() {
-  #if IS_ESP32S3
+  // Firewall mode sends no KISS frames (serial_write()), so nothing ever
+  // reads the temperature, and reading it can hang the other core: Arduino's
+  // temperatureRead() restarts the sensor on every call, and the restart
+  // clears the sensor's conversion bit without the lock the WiFi PHY holds
+  // while it waits on that conversion with interrupts off (interrupt
+  // watchdog on CPU0, then a reboot). Leave the sensor to the PHY.
+  #if IS_ESP32S3 && !defined(FIREWALL_MODE)
     pmu_temp_sensor_ready = true;
   #endif
 
