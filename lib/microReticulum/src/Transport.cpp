@@ -3928,6 +3928,15 @@ will announce it.
 			wl2_push(destination_hash);
 #endif
 
+#if defined(FIREWALL_MODE)
+			// A path request from a LAN-side device always goes out; only
+			// one from the backbone waits for a slow interface's announce
+			// cap. (The reference likewise exempts its local clients.)
+			const bool recursive = attached_interface.is_backbone();
+#else
+			const bool recursive = true;
+#endif
+
 #if defined(INTERFACES_SET)
 			for (const Interface& interface : _interfaces) {
 #elif defined(INTERFACES_LIST)
@@ -3939,7 +3948,7 @@ will announce it.
 					TRACE("Transport::path_request: not requesting path back to sender on backbone " + interface.toString());
 				} else {
 					TRACE("Transport::path_request: requesting path on interface " + interface.toString());
-					request_path(destination_hash, interface, tag, true);
+					request_path(destination_hash, interface, tag, recursive);
 				}
 			}
 

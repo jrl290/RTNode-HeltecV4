@@ -62,7 +62,7 @@ namespace RNS { namespace Type {
 		static const bool LINK_MTU_DISCOVERY   = true;
 
 		static const uint16_t MAX_QUEUED_ANNOUNCES = 16384;
-		static const uint32_t QUEUED_ANNOUNCE_LIFE = 60*60*24;
+		static const uint32_t QUEUED_ANNOUNCE_LIFE = 60*60*3;
 
 		static const uint8_t ANNOUNCE_CAP = 2;
 		/*
