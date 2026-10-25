@@ -466,6 +466,12 @@ This project is licensed under the **GNU General Public License v3.0** — see [
 
 Based on:
 - [RNode Firmware](https://github.com/markqvist/RNode_Firmware) by Mark Qvist (GPL-3.0)
-- [microReticulum](https://github.com/attermann/microReticulum) by Chris Attermann (GPL-3.0)
-- [Reticulum](https://reticulum.network/) by Mark Qvist (MIT)
+- [microReticulum](https://github.com/attermann/microReticulum) by Chad Attermann (Apache-2.0, see
+  [lib/microReticulum/LICENSE](lib/microReticulum/LICENSE)). RTNode carries a modified copy; each file
+  we changed says so at the top.
+
+RTNode works with [Reticulum](https://reticulum.network/) nodes, but nothing we added is translated
+from the Python reference implementation, which is under the Reticulum License. Where RTNode needs
+to behave as a Reticulum node does, the behaviour is described in
+[RETICULUM_BEHAVIOUR.md](RETICULUM_BEHAVIOUR.md) and the code is written from that description.
 
