@@ -14,7 +14,8 @@
 
 namespace RNS {
 
-	// IFAC salt used for key derivation (matches Python RNS Reticulum.IFAC_SALT)
+	// IFAC salt used for key derivation: a protocol constant, the same on every
+	// Reticulum node, or IFAC keys would not match.
 	static const uint8_t IFAC_SALT[] = {
 		0xad, 0xf5, 0x4d, 0x88, 0x2c, 0x9a, 0x9b, 0x80,
 		0x77, 0x1e, 0xb4, 0x99, 0x5d, 0x70, 0x2d, 0x4a,

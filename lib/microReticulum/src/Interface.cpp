@@ -152,140 +152,71 @@ TRACE(">>> Interface post: " + dst.debugString());
 }
 */
 
-// ── Ingress control, as Python RNS 1.5.2 Interface ───────────────────────────
-// Announces for destinations not yet in the path table are held while their
-// source is bursting (Transport::inbound decides), then released one at a time
-// once it calms down (Transport::loop runs the jobs). Constants: Type.h.
+// ── Ingress control (RETICULUM_BEHAVIOUR.md §1) ──────────────────────────────
+// Transport::inbound() asks whether to hold an announce; Transport's 5-second
+// round lets held ones in. The rules themselves live in AnnounceGate.h.
 
-uint64_t Interface::ingress_clock() {
+uint64_t RNS::ingress_clock() {
 	return Utilities::OS::ltime() - Utilities::OS::getTimeOffset();
 }
 
-IngressState::IngressState() : created(Interface::ingress_clock()) {}
-
-static std::string ingress_label(const Interface& interface, const IngressState& state) {
-	if (state.client < 0) { return interface.toString(); }
-	return interface.toString() + " client " + std::to_string(state.client);
+static std::string source_name(const Interface& interface, int client) {
+	if (client < 0) { return interface.toString(); }
+	return interface.toString() + " client " + std::to_string(client);
 }
 
-// Python's incoming_announce_frequency(): arrivals over the time since the
-// oldest, once there are more than IC_DEQUE_MIN_SAMPLE. Each call forgets the
-// oldest arrival if it is more than AR_FREQ_DECAY old.
-static double incoming_announce_frequency(IngressState& state, uint64_t now) {
-	uint8_t n = state.ia_count;
-	if (n <= IC_DEQUE_MIN_SAMPLE) { return 0; }
-	uint32_t span_ms = (uint32_t)now - state.ia_times[state.ia_head];
-	if (span_ms > (uint32_t)AR_FREQ_DECAY * 1000) {
-		state.ia_head = (state.ia_head + 1) % IA_FREQ_SAMPLES;
-		state.ia_count--;
-	}
-	if (span_ms == 0) { return 0; }
-	return n / (span_ms / 1000.0);
-}
-
-static double burst_threshold(const IngressState& state, uint64_t now) {
-	return (now - state.created < (uint64_t)IC_NEW_TIME * 1000) ? IC_BURST_FREQ_NEW : IC_BURST_FREQ;
-}
-
-// Python's should_ingress_limit().
-static bool should_limit(const Interface& interface, IngressState& state, uint64_t now) {
-	double threshold = burst_threshold(state, now);
-	double ia_freq = incoming_announce_frequency(state, now);
-	if (state.burst_active) {
-		if (ia_freq < threshold && now > state.burst_activated + IC_BURST_HOLD * 1000
-		    && now > state.burst_sustained + IC_BURST_HOLD * 1000) {
-			if (state.ia_count >= IC_DEQUE_MIN_SAMPLE) {
-				state.burst_active = false;
-				NOTICEF("[INGRESS] %s burst over, %u announces held",
-				        ingress_label(interface, state).c_str(), (unsigned)state.held.size());
-			}
-		}
-		else if (ia_freq >= threshold) {
-			state.burst_sustained = now;
-		}
-		return true;
-	}
-	if (ia_freq > threshold) {
-		state.burst_active = true;
-		state.burst_activated = now;
-		state.burst_sustained = now;
-		state.held_release = now + IC_BURST_PENALTY * 1000;
+// Logs what a look at a source found; the bench tests read these lines.
+static void report(const Interface& interface, int client, const IngressGate& gate, const IngressGate::Reading& reading) {
+	if (reading.began) {
 		NOTICEF("[INGRESS] %s burst: %.1f announces/s > %.1f, holding new destinations",
-		        ingress_label(interface, state).c_str(), ia_freq, threshold);
-		return true;
+		        source_name(interface, client).c_str(), reading.rate, reading.threshold);
 	}
-	return false;
+	if (reading.ended) {
+		NOTICEF("[INGRESS] %s burst over, %u announces held",
+		        source_name(interface, client).c_str(), (unsigned)gate.held());
+	}
 }
 
-void Interface::received_announce() {
+void Interface::announce_arrived() {
 	assert(_impl);
-	IngressState& state = _impl->ingress_source();
-	// A full ring drops its oldest arrival, as Python's deque(maxlen=...) does.
-	uint8_t tail = (state.ia_head + state.ia_count) % IA_FREQ_SAMPLES;
-	state.ia_times[tail] = (uint32_t)ingress_clock();
-	if (state.ia_count < IA_FREQ_SAMPLES) { state.ia_count++; }
-	else { state.ia_head = (state.ia_head + 1) % IA_FREQ_SAMPLES; }
+	int client;
+	_impl->ingress_source(client).arrived(ingress_clock());
 }
 
-bool Interface::should_ingress_limit() {
+bool Interface::holding_new_announces() {
 	assert(_impl);
-	return should_limit(*this, _impl->ingress_source(), ingress_clock());
+	int client;
+	IngressGate& gate = _impl->ingress_source(client);
+	IngressGate::Reading reading = gate.look(ingress_clock());
+	report(*this, client, gate, reading);
+	return reading.flooding;
 }
 
-bool Interface::hold_announce(const Bytes& destination_hash, const Bytes& raw, uint8_t hops, bool may_add) {
+bool Interface::hold_new_announce(const Bytes& destination_hash, const Bytes& raw, uint8_t hops, bool room_overall) {
 	assert(_impl);
 	if (hops >= Type::Transport::PATHFINDER_M - 1) { return false; }
-	IngressState& state = _impl->ingress_source();
-	for (auto& held : state.held) {
-		if (held.destination_hash == destination_hash) {
-			held.raw = raw;
-			held.hops = hops;
-			return true;
-		}
-	}
-	// Python holds up to 256; that fits in PSRAM, not in a board's internal RAM.
-	size_t limit = Utilities::OS::heap_in_psram() ? MAX_HELD_ANNOUNCES : MAX_HELD_ANNOUNCES_SMALL;
-	if (!may_add || state.held.size() >= limit) { return false; }
-	HeldAnnounce held;
-	held.destination_hash = destination_hash;
-	held.raw = raw;
-	held.hops = hops;
-	state.held.push_back(held);
-	return true;
+	int client;
+	IngressGate& gate = _impl->ingress_source(client);
+	// The full allowance fits in PSRAM, not in a board's internal RAM.
+	size_t limit = Utilities::OS::heap_in_psram() ? IngressGate::HOLD_LIMIT : IngressGate::HOLD_LIMIT_SMALL;
+	return gate.hold(destination_hash, raw, hops, limit, room_overall);
 }
 
-void Interface::ingress_jobs(std::vector<Bytes>& released) {
+void Interface::release_held(std::vector<Bytes>& released) {
 	assert(_impl);
 	uint64_t now = ingress_clock();
-	_impl->for_each_ingress([&](IngressState& state) {
-		// Python's job calls should_ingress_limit() on every interface; that
-		// is what forgets old arrivals and ends a burst when nothing arrives.
-		should_limit(*this, state, now);
-		// process_held_announces(). Python releases while a burst is still
-		// active too, and inbound() then holds the announce again; waiting for
-		// the burst to end has the same outcome. Python's "now > held_release"
-		// never ties in float seconds; in milliseconds the next 5 s job lands
-		// on it exactly, so a tie counts as due.
-		if (state.burst_active || state.held.empty() || now < state.held_release) { return; }
-		if (incoming_announce_frequency(state, now) >= burst_threshold(state, now)) { return; }
-		size_t selected = state.held.size();
-		uint8_t min_hops = Type::Transport::PATHFINDER_M;
-		for (size_t i = 0; i < state.held.size(); i++) {
-			if (state.held[i].hops < min_hops) {
-				min_hops = state.held[i].hops;
-				selected = i;
-			}
+	_impl->for_each_ingress([&](IngressGate& gate, int client) {
+		report(*this, client, gate, gate.look(now));
+		Bytes announce;
+		if (gate.release(now, announce)) {
+			released.push_back(announce);
 		}
-		if (selected == state.held.size()) { return; }
-		state.held_release = now + IC_HELD_RELEASE_INTERVAL * 1000;
-		released.push_back(state.held[selected].raw);
-		state.held.erase(state.held.begin() + selected);
 	});
 }
 
-size_t Interface::held_announce_count() const {
+size_t Interface::held_announces() const {
 	assert(_impl);
 	size_t held = 0;
-	_impl->for_each_ingress([&](IngressState& state) { held += state.held.size(); });
+	_impl->for_each_ingress([&](IngressGate& gate, int) { held += gate.held(); });
 	return held;
 }

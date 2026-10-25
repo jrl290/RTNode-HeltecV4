@@ -253,7 +253,12 @@ firmware hash was blank EEPROM; fixed with `rnodeconf --firmware-hash
 RNS 1.5.2's announce ingress control, ported into microReticulum
 ([Interface.cpp](lib/microReticulum/src/Interface.cpp),
 [Transport.cpp](lib/microReticulum/src/Transport.cpp), constants in
-[Type.h](lib/microReticulum/src/Type.h)). Each source keeps its last 48
+[Type.h](lib/microReticulum/src/Type.h)). *Since 2026-10-25 the port is gone:
+the behaviour, differences below included, is described in
+[RETICULUM_BEHAVIOUR.md](RETICULUM_BEHAVIOUR.md) §1 and the code
+([AnnounceGate.h](lib/microReticulum/src/AnnounceGate.h)) is written from that
+description, because RTNode (GPL-3) cannot carry code translated from the
+Python implementation (Reticulum License).* Each source keeps its last 48
 announce arrivals; its rate is their count over the time since the oldest
 (three needed; arrivals over 10 s old are forgotten one per check). Past
 3/s from a source younger than two hours (10/s once established), announces
@@ -356,7 +361,8 @@ PSRAM at start.
   for an unknown destination was forwarded but the asker was not recorded,
   so the response went nowhere until the asker asked again. Now answered on
   the asker's interface as Python does (b0c7a86); this also fixes TCP
-  clients asking for LoRa-only or backbone destinations.
+  clients asking for LoRa-only or backbone destinations. (Rewritten
+  2026-10-25 from RETICULUM_BEHAVIOUR.md §2.)
 
 **Fix direction** (each measured on its own, rule 1)
 

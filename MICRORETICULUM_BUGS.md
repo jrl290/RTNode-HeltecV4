@@ -273,6 +273,11 @@ are unaffected because they bypass the hashlist check in `packet_filter`.
 the Python reference implementation. Add `_packet_hashlist.insert()` inside
 the link transport forwarding block after direction is confirmed.
 
+*2026-10-25:* the rule is now described in
+[RETICULUM_BEHAVIOUR.md](RETICULUM_BEHAVIOUR.md) §3 and the code rewritten from
+that description, since RTNode (GPL-3) cannot carry code translated from the
+Python implementation (Reticulum License).
+
 ---
 
 ## 8. Missing Link MTU Clamping — 70% Resource Transfer Stall (CRITICAL)
@@ -282,6 +287,11 @@ the link transport forwarding block after direction is confirmed.
 **Status:** FIXED (v1.0.12, 2026-02-28)
 
 `Transport.cpp` did not clamp the link MTU when forwarding `LINKREQUEST` packets through the transport node. The Python reference implementation (`Transport.py` lines 1458–1480) performs this clamping to ensure the negotiated link MTU does not exceed the capacity of any intermediate hop's interface.
+
+*2026-10-25:* the v1.0.12 fix followed the Python code. It is now one function,
+`fit_link_request_mtu()`, written from the description in
+[RETICULUM_BEHAVIOUR.md](RETICULUM_BEHAVIOUR.md) §6, since RTNode (GPL-3) cannot
+carry code translated from the Python implementation (Reticulum License).
 
 ### Bug 8a — LINKREQUEST forwarded without MTU clamping
 
@@ -298,17 +308,8 @@ if (packet.packet_type() == Type::Packet::LINKREQUEST) {
 }
 ```
 
-The Python reference (`Transport.py` lines 1458–1480) does:
-```python
-path_mtu = RNS.Link.mtu_from_lr_packet(packet)
-if path_mtu:
-    nh_mtu = outbound_interface.HW_MTU
-    ph_mtu = interface.HW_MTU if interface else None
-    if nh_mtu < path_mtu or (ph_mtu and ph_mtu < path_mtu):
-        path_mtu = min(nh_mtu, ph_mtu)
-        clamped_mtu = RNS.Link.signalling_bytes(path_mtu, mode)
-        new_raw = new_raw[:-RNS.Link.LINK_MTU_SIZE] + clamped_mtu
-```
+What a relaying node must do instead is described in
+[RETICULUM_BEHAVIOUR.md](RETICULUM_BEHAVIOUR.md) §6.
 
 **Impact:** When both endpoints connect via TCP (HW_MTU=8192) through a V3 boundary node (HW_MTU=1064):
 

@@ -3,8 +3,8 @@
 //
 //  Implements the on-network interface-discovery announce protocol described
 //  in the Reticulum manual: https://reticulum.network/manual/interfaces.html
-//  Compatible with RNS/Discovery.py (InterfaceAnnouncer / InterfaceAnnounceHandler)
-//  and LXMF/LXStamper.py (stamp generation).
+//  The values other nodes check, and RTNode's own defaults, are listed in
+//  RETICULUM_BEHAVIOUR.md §5.
 //
 //  When FIREWALL_MODE is active and the user has enabled "Advertise Device" in
 //  the captive-portal configuration, this module periodically sends an
@@ -54,7 +54,7 @@ extern int      lora_cr;
 extern uint32_t rtc_node_hash_magic;
 extern char     rtc_node_hash_hex[33];
 
-// ─── Protocol constants (must match RNS/Discovery.py & LXMF/LXStamper.py) ───
+// ─── Protocol constants (the wire format; every node reads these) ───────────
 #define ADV_FIELD_INTERFACE_TYPE  0x00
 #define ADV_FIELD_TRANSPORT       0x01
 #define ADV_FIELD_REACHABLE_ON    0x02
@@ -76,11 +76,9 @@ extern char     rtc_node_hash_hex[33];
 #define ADV_FLAG_SIGNED    0x01
 #define ADV_FLAG_ENCRYPTED 0x02
 
-// Defaults — must match Reticulum's interface-announcer defaults so the
-// stamp validates against the on-network handler (RNS/Discovery.py).
-// RNS 1.5.2's InterfaceAnnouncer.DEFAULT_STAMP_VALUE, and the value a 1.5.2
-// node requires by default (required_discovery_value). 1.1.3 used 14; a
-// 1.5.2 node ignores a value-14 stamp three times in four.
+// The stamp other nodes check before they accept the advert
+// (RETICULUM_BEHAVIOUR.md §5). Nodes on Reticulum 1.5 require value 16 by
+// default and ignore a value-14 stamp three times in four; 1.1 used 14.
 #define ADV_DEFAULT_STAMP_COST      16
 #define ADV_WORKBLOCK_EXPAND_ROUNDS 20
 #define ADV_STAMP_SIZE              32 /* SHA-256 / HASHLENGTH/8 */
@@ -88,9 +86,8 @@ extern char     rtc_node_hash_hex[33];
 // LoRa; in one piece it took 13–28 s at value 14 (bench, 2026-09-28).
 #define ADV_STAMP_SLICE_US          2000
 
-// Default announce interval matches RNS Reticulum.py's discoverable-interface
-// fallback when announce_interval is not specified (6 hours). LoRa airtime
-// is precious; this is intentionally conservative.
+// Default announce interval: 6 hours, as other Reticulum nodes default to.
+// LoRa airtime is precious; this is intentionally conservative.
 #define ADV_DEFAULT_ANNOUNCE_INTERVAL_S (6UL * 60UL * 60UL)
 // Initial delay after boot before the first announce — gives the radio,
 // transport and any TCP backbone time to come up.
@@ -107,7 +104,7 @@ static uint32_t advertise_next_run_ms      = 0;
 static uint32_t advertise_announce_interval_ms = ADV_DEFAULT_ANNOUNCE_INTERVAL_S * 1000UL;
 
 // Cached stamp keyed by infohash so we only redo the proof-of-work when the
-// advertised parameters actually change (matches InterfaceAnnouncer.stamp_cache).
+// advertised parameters actually change.
 // Stamp is persisted to ESP32 NVS to survive reboots.
 static RNS::Bytes advertise_cached_infohash;
 static RNS::Bytes advertise_cached_stamp;
@@ -361,7 +358,7 @@ static RNS::Bytes advertise_build_info() {
 
     // Determine which optional fields will be included so we can write a
     // correct map header up front. The IFAC network name and passphrase go
-    // out only when the user opted in, as RNS's publish_ifac (default off):
+    // out only when the user opted in (off by default, as on other nodes):
     // anyone who hears the advert can use them to join.
     bool include_ifac =
         firewall_state.advert_publish_ifac &&

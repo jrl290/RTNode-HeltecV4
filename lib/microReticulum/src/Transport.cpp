@@ -287,6 +287,28 @@ static const char* ctx_name(uint8_t ctx) {
 static inline bool is_resource_ctx(uint8_t ctx) {
 	return ctx >= 0x01 && ctx <= 0x07;
 }
+
+// RETICULUM_BEHAVIOUR.md §6: a link request this node relays asks for no
+// larger link MTU than both interfaces it crosses here can carry. raw is the
+// request as it will go out on onward.
+static void fit_link_request_mtu(const Packet& request, const Interface& onward, Bytes& raw) {
+	const uint16_t asked = Link::mtu_from_lr_packet(request);
+	if (asked == 0) { return; }
+	auto without_mtu = [&raw]() { return raw.left(raw.size() - Type::Link::LINK_MTU_SIZE); };
+	if (onward.HW_MTU() == 0 || !(onward.AUTOCONFIGURE_MTU() || onward.FIXED_MTU())) {
+		DEBUG("Link request MTU: " + onward.toString() + " cannot carry a larger MTU, removing the request for one");
+		raw = without_mtu();
+		return;
+	}
+	const Interface& arrived_on = request.receiving_interface();
+	uint16_t fits = std::min(asked, onward.HW_MTU());
+	if (arrived_on.HW_MTU() > 0) { fits = std::min(fits, arrived_on.HW_MTU()); }
+	if (fits == asked) { return; }
+	raw = without_mtu() + Link::signalling_bytes(fits, Link::mode_from_lr_packet(request));
+	DEBUGF("Link request MTU: %u asked, %u fits between %s and %s", asked, fits,
+	       arrived_on.toString().c_str(), onward.toString().c_str());
+}
+
 /*static*/ Identity Transport::_identity({Type::NONE});
 
 // CBA
@@ -420,32 +442,33 @@ static inline bool is_resource_ctx(uint8_t ctx) {
 	release_held_announces();
 }
 
-// Set while a released announce goes back through inbound(), which then skips
-// ingress control for it: the local TCP server would credit it to whichever
+// Set while a held announce is let back in through inbound(), which then
+// leaves ingress control out: the local TCP server would credit it to whichever
 // client sent data last, and could hold it again under a flooding one.
 static bool releasing_held_announce = false;
-// Announces ingress control could not hold: source or total store full.
+// Announces ingress control could not hold: a source's or the total store full.
 static uint32_t ingress_dropped = 0;
 
-// Ingress control, as Python RNS's interface jobs: every INTERFACE_JOBS_INTERVAL
-// each ingress state may hand back one held announce, which goes through
-// inbound() again. Runs outside jobs(): outbound() waits while _jobs_running is set.
+// Ingress control's round (RETICULUM_BEHAVIOUR.md §1): every 5 s, counted from
+// the end of the previous round, each gate may let one held announce in, which
+// then goes through inbound() again. Runs outside jobs(): outbound() waits
+// while _jobs_running is set.
 /*static*/ void Transport::release_held_announces() {
-	static const uint64_t INTERFACE_JOBS_INTERVAL = 5000;  // ms; Python Transport.interface_jobs_interval
-	static uint64_t last_run = 0;
-	if (Interface::ingress_clock() < last_run + INTERFACE_JOBS_INTERVAL) { return; }
+	static const uint64_t ROUND_MS = 5000;
+	static uint64_t last_round_end = 0;
+	if (ingress_clock() < last_round_end + ROUND_MS) { return; }
 	std::vector<std::pair<Bytes, Interface>> releases;
 	for (auto& [hash, interface] : _interfaces) {
 		std::vector<Bytes> released;
-		interface.ingress_jobs(released);
+		interface.release_held(released);
 		for (auto& raw : released) {
 			releases.push_back({raw, interface});
 		}
 	}
-	last_run = Interface::ingress_clock();  // as Python: stamped after the jobs
+	last_round_end = ingress_clock();
 	for (auto& [raw, interface] : releases) {
 		VERBOSEF("[INGRESS] %s releasing a held announce (%u still held)", interface.toString().c_str(),
-		         (unsigned)interface.held_announce_count());
+		         (unsigned)interface.held_announces());
 		struct Releasing {
 			Releasing() { releasing_held_announce = true; }
 			~Releasing() { releasing_held_announce = false; }
@@ -461,7 +484,7 @@ static uint32_t ingress_dropped = 0;
 /*static*/ size_t Transport::ingress_held_count() {
 	size_t held = 0;
 	for (auto& [hash, interface] : _interfaces) {
-		held += interface.held_announce_count();
+		held += interface.held_announces();
 	}
 	return held;
 }
@@ -1170,8 +1193,8 @@ static uint32_t ingress_dropped = 0;
 					// Firewall mode: announce broadcasts are always allowed.
 					// No mode gating — LAN announces go to every interface
 					// including WAN, and whitelisted WAN announces go to every
-					// LAN interface. Only slow interfaces (LoRa) keep the
-					// reference's bandwidth cap; see announce_cap_allows().
+					// LAN interface. Only slow interfaces (LoRa) have an
+					// announce cap (RETICULUM_BEHAVIOUR.md §7).
 					if (packet.attached_interface() && interface == packet.attached_interface()) {
 						// If the announce is pinned to a specific interface,
 						// only transmit on that one.
@@ -1829,29 +1852,14 @@ static uint32_t ingress_dropped = 0;
 		// 	}
 		// }
 
-	// By default, remember packet hashes to avoid routing
-		// loops in the network, using the packet filter.
-		bool remember_packet_hash = true;
-
-		// If this packet belongs to a link in our link table,
-		// we'll have to defer adding it to the filter list.
-		// In some cases, we might see a packet over a shared-
-		// medium interface, belonging to a link that transports
-		// or terminates with this instance, but before it would
-		// normally reach us. If the packet is appended to the
-		// filter list at this point, link transport will break.
-		if (_link_table.find(packet.destination_hash()) != _link_table.end()) {
-			remember_packet_hash = false;
-		}
-
-		// If this is a link request proof, don't add it until
-		// we are sure it's not actually somewhere else in the
-		// routing chain.
-		if (packet.packet_type() == Type::Packet::PROOF && packet.context() == Type::Packet::LRPROOF) {
-			remember_packet_hash = false;
-		}
-
-		if (remember_packet_hash) {
+		// The duplicate filter (RETICULUM_BEHAVIOUR.md §3). A packet on a link
+		// this node carries goes in once link transport picks this node to
+		// relay it, and a link request proof not at all here: over LoRa the
+		// node may hear a copy before the one it is meant to relay.
+		const bool on_a_link_here = _link_table.find(packet.destination_hash()) != _link_table.end();
+		const bool link_request_proof =
+			packet.packet_type() == Type::Packet::PROOF && packet.context() == Type::Packet::LRPROOF;
+		if (!on_a_link_here && !link_request_proof) {
 			// CBA ACCUMULATES
 			_packet_hashlist.push_back(packet.packet_hash());
 		}
@@ -1989,32 +1997,7 @@ static uint32_t ingress_dropped = 0;
 							double proof_timeout = Transport::extra_link_proof_timeout(packet.receiving_interface())
 								+ now + Type::Link::ESTABLISHMENT_TIMEOUT_PER_HOP * std::max((uint8_t)1, remaining_hops);
 
-							// === MTU Clamping (v1.0.12) ===
-							// When forwarding a LINKREQUEST through this transport node,
-							// clamp the link MTU signalling to min(prev-hop, next-hop)
-							// interface HW_MTU.  Without this, endpoints negotiate a
-							// segment size that exceeds this node's buffer capacity,
-							// causing silent truncation and resource transfer stalls.
-							uint16_t path_mtu = Link::mtu_from_lr_packet(packet);
-							if (path_mtu > 0) {
-								uint16_t ph_mtu = packet.receiving_interface().HW_MTU();
-								uint16_t nh_mtu = outbound_interface.HW_MTU();
-								if (nh_mtu == 0) {
-									DEBUG("MTU CLAMP: No next-hop HW MTU, stripping link MTU signalling");
-									new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-								} else if (!outbound_interface.AUTOCONFIGURE_MTU() && !outbound_interface.FIXED_MTU()) {
-									DEBUG("MTU CLAMP: Outbound interface doesn't support MTU config, stripping link MTU signalling");
-									new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-								} else {
-									if (nh_mtu < path_mtu || (ph_mtu > 0 && ph_mtu < path_mtu)) {
-										uint16_t clamped = std::min(nh_mtu, (ph_mtu > 0) ? ph_mtu : nh_mtu);
-										RNS::Type::Link::link_mode mode = Link::mode_from_lr_packet(packet);
-										Bytes clamped_mtu_bytes = Link::signalling_bytes(clamped, mode);
-										new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE) + clamped_mtu_bytes;
-										DEBUGF("MTU CLAMP: path=%u ph=%u nh=%u -> clamped=%u", path_mtu, ph_mtu, nh_mtu, clamped);
-									}
-								}
-							}
+							fit_link_request_mtu(packet, outbound_interface, new_raw);
 
 							LinkEntry link_entry(
 								now,
@@ -2108,7 +2091,7 @@ static uint32_t ingress_dropped = 0;
 				}
 				// Proofs on established links are left to link transport below,
 				// which sends them on the opposite interface to the one they
-				// came in on (Transport.py). A block here used to send them to
+				// came in on (RETICULUM_BEHAVIOUR.md §3). A block here used to send them to
 				// the link's outbound interface as well, whatever their
 				// direction: a delivery proof from the destination went back
 				// out where it came from, and one from the initiator went out
@@ -2136,7 +2119,7 @@ static uint32_t ingress_dropped = 0;
 							// packet came in on. Two LoRa devices talking directly
 							// then had every packet, link request and link packet sent
 							// again by this node (tests/bench_lora_neighbour.py).
-							// Python RNS never relays such a packet at all.
+							// Such a packet is not relayed at all (RETICULUM_BEHAVIOUR.md §3).
 							if (outbound_interface == packet.receiving_interface()) {
 								NOTICE("SKIP-FWD - TO: " + short_hash(packet.destination_hash()) + " is in range of its sender on " + outbound_interface.toString());
 								in_range = true;
@@ -2182,23 +2165,7 @@ static uint32_t ingress_dropped = 0;
 									+ now + Type::Link::ESTABLISHMENT_TIMEOUT_PER_HOP
 									* std::max((uint8_t)1, remaining_hops);
 
-								// === MTU Clamping (v1.0.12) ===
-								uint16_t path_mtu = Link::mtu_from_lr_packet(packet);
-								if (path_mtu > 0) {
-									uint16_t ph_mtu = packet.receiving_interface().HW_MTU();
-									uint16_t nh_mtu = outbound_interface.HW_MTU();
-									if (nh_mtu == 0) {
-										new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-									} else if (!outbound_interface.AUTOCONFIGURE_MTU() && !outbound_interface.FIXED_MTU()) {
-										new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-									} else if (nh_mtu < path_mtu || (ph_mtu > 0 && ph_mtu < path_mtu)) {
-										uint16_t clamped = std::min(nh_mtu, (ph_mtu > 0) ? ph_mtu : nh_mtu);
-										RNS::Type::Link::link_mode mode = Link::mode_from_lr_packet(packet);
-										Bytes clamped_mtu_bytes = Link::signalling_bytes(clamped, mode);
-										new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE) + clamped_mtu_bytes;
-										DEBUGF("MTU CLAMP: local->backbone path=%u ph=%u nh=%u -> %u", path_mtu, ph_mtu, nh_mtu, clamped);
-									}
-								}
+								fit_link_request_mtu(packet, outbound_interface, new_raw);
 
 								LinkEntry link_entry(
 									now, next_hop, outbound_interface, remaining_hops,
@@ -2281,23 +2248,7 @@ static uint32_t ingress_dropped = 0;
 										+ now + Type::Link::ESTABLISHMENT_TIMEOUT_PER_HOP
 										* std::max((uint8_t)1, remaining_hops2);
 
-									// === MTU Clamping (v1.0.12) ===
-									uint16_t path_mtu = Link::mtu_from_lr_packet(packet);
-									if (path_mtu > 0) {
-										uint16_t ph_mtu = packet.receiving_interface().HW_MTU();
-										uint16_t nh_mtu = outbound_interface2.HW_MTU();
-										if (nh_mtu == 0) {
-											new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-										} else if (!outbound_interface2.AUTOCONFIGURE_MTU() && !outbound_interface2.FIXED_MTU()) {
-											new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE);
-										} else if (nh_mtu < path_mtu || (ph_mtu > 0 && ph_mtu < path_mtu)) {
-											uint16_t clamped = std::min(nh_mtu, (ph_mtu > 0) ? ph_mtu : nh_mtu);
-											RNS::Type::Link::link_mode mode = Link::mode_from_lr_packet(packet);
-											Bytes clamped_mtu_bytes = Link::signalling_bytes(clamped, mode);
-											new_raw = new_raw.left(new_raw.size() - Type::Link::LINK_MTU_SIZE) + clamped_mtu_bytes;
-											DEBUGF("MTU CLAMP: backbone->local path=%u ph=%u nh=%u -> %u", path_mtu, ph_mtu, nh_mtu, clamped);
-										}
-									}
+									fit_link_request_mtu(packet, outbound_interface2, new_raw);
 
 									LinkEntry link_entry(
 										now, next_hop2, outbound_interface2, remaining_hops2,
@@ -2364,7 +2315,7 @@ static uint32_t ingress_dropped = 0;
 						// packet was received on.
 						if (packet.receiving_interface() == link_entry._outbound_interface) {
 							// Reverse direction (from destination back toward initiator).
-							// Match Python reference Transport.py line 1611: exact match.
+							// Relayed only on an exact hop-count match (RETICULUM_BEHAVIOUR.md §3).
 							
 							
 							if (packet.hops() == link_entry._remaining_hops) {
@@ -2399,9 +2350,8 @@ static uint32_t ingress_dropped = 0;
 						if (is_resource_ctx(packet.context())) {
 							WLOG(packet, std::string(ctx_name(packet.context())) + " FWD to " + outbound_interface.toString() + " (" + zone_tag(is_backbone_interface(outbound_interface)) + ")");
 						}
-						// Add this packet to the filter hashlist now that
-						// we have determined it's actually our turn to
-						// process it (matching Python Transport line 1544).
+						// This node relays it, so now it goes into the
+						// duplicate filter (RETICULUM_BEHAVIOUR.md §3).
 						_packet_hashlist.push_back(packet.packet_hash());
 						// CBA RESERVE
 						//Bytes new_raw;
@@ -2439,17 +2389,15 @@ static uint32_t ingress_dropped = 0;
 			TRACE("Transport::inbound: Packet is ANNOUNCE");
 			DEBUG("DIAG: ANNOUNCE-IN dest=" + packet.destination_hash().toHex().substr(0,8) + " iface=" + packet.receiving_interface().toString() + " hops=" + std::to_string(packet.hops()));
 
-			// Ingress control (Python RNS 1.5.2 Transport.preprocess_inbound): an
-			// announce for a destination not yet in the path table, and that no
-			// path request is waiting for, is held while its source is bursting;
-			// known destinations' re-announces are left to announce rate
-			// limiting. Python counts only announces whose signature checks out;
-			// this counts every one, since checking signatures is the work a
-			// flood makes an ESP32 do. raw_in is held as it arrived, IFAC and
-			// all, so a released announce is verified again.
+			// Ingress control (RETICULUM_BEHAVIOUR.md §1): an announce for a
+			// destination not in the path table, and that no path request is
+			// waiting for, is held while its source floods. Every arrival
+			// counts, before its signature is checked: checking signatures is
+			// the work a flood makes an ESP32 do. raw_in is held as it
+			// arrived, IFAC and all, so it is checked in full when let in.
 			if (interface && !releasing_held_announce) {
 				Interface receiving = interface;
-				receiving.received_announce();
+				receiving.announce_arrived();
 				const Bytes& announced = packet.destination_hash();
 				bool awaited =
 					std::any_of(_path_requests.begin(), _path_requests.end(),
@@ -2457,11 +2405,10 @@ static uint32_t ingress_dropped = 0;
 					std::any_of(_discovery_path_requests.begin(), _discovery_path_requests.end(),
 					            [&](const std::pair<Bytes, PathRequestEntry>& request) { return request.first == announced; });
 				if (_destination_table.find(announced) == _destination_table.end() && !awaited
-				    && receiving.should_ingress_limit()) {
-					size_t total_limit = OS::heap_in_psram() ? Type::Interface::MAX_HELD_ANNOUNCES_TOTAL
-					                                         : Type::Interface::MAX_HELD_ANNOUNCES_TOTAL_SMALL;
-					bool may_add = ingress_held_count() < total_limit;
-					if (!receiving.hold_announce(announced, raw_in, packet.hops(), may_add)) {
+				    && receiving.holding_new_announces()) {
+					size_t total_limit = OS::heap_in_psram() ? IngressGate::HOLD_LIMIT_ALL : IngressGate::HOLD_LIMIT_ALL_SMALL;
+					bool room_overall = ingress_held_count() < total_limit;
+					if (!receiving.hold_new_announce(announced, raw_in, packet.hops(), room_overall)) {
 						if (ingress_dropped++ == 0) {
 							NOTICEF("[INGRESS] %s: held announces full (%u held in total), dropping; counted as ic_drop",
 							        receiving.toString().c_str(), (unsigned)ingress_held_count());
@@ -2676,8 +2623,8 @@ static uint32_t ingress_dropped = 0;
 						DEBUG("Destination " + packet.destination_hash().toHex() + " is now " + std::to_string(announce_hops) + " hops away via " + received_from.toHex() + " on " + packet.receiving_interface().toString());
 
 						// Anyone whose path request we forwarded gets the
-						// answer now (Python 1.5.2 Transport._inbound).
-						answer_waiting_path_requests(packet);
+						// answer now (RETICULUM_BEHAVIOUR.md §2).
+						answer_forwarded_path_requests(packet);
 						DEBUG("DIAG: STORED path " + packet.destination_hash().toHex().substr(0,8) + " hops=" + std::to_string(announce_hops) + " iface=" + packet.receiving_interface().toString());
 
 						//TRACE("Transport::inbound: Destination " + packet.destination_hash().toHex() + " has data: " + packet.data().toHex());
@@ -3050,29 +2997,41 @@ static uint32_t ingress_dropped = 0;
 	TRACE("Transport: Registered trusted local client interface " + interface.toString());
 }
 
-/*static*/ void Transport::answer_waiting_path_requests(const Packet& packet) {
-	auto waiting = flatmap_find(_discovery_path_requests, packet.destination_hash());
-	if (waiting == _discovery_path_requests.end()) return;
-	std::vector<Interface> askers = waiting->second._requesting_interfaces;
-	_discovery_path_requests.erase(waiting);
-	Identity announce_identity(Identity::recall(packet.destination_hash()));
-	Destination announce_destination(announce_identity, Type::Destination::OUT, Type::Destination::SINGLE, packet.destination_hash());
+// RETICULUM_BEHAVIOUR.md §2: who is waiting on a path request we forwarded.
+// A later asker joins the destination's entry; a new entry lasts as long as a
+// path request does, and only so many destinations are remembered at once.
+/*static*/ void Transport::remember_asker(const Bytes& destination_hash, const Interface& asker) {
+	static const size_t MAX_REMEMBERED_DESTINATIONS = 64;
+	if (!asker) { return; }
+	auto entry = flatmap_find(_discovery_path_requests, destination_hash);
+	if (entry != _discovery_path_requests.end()) {
+		std::vector<Interface>& askers = entry->second._requesting_interfaces;
+		if (std::find(askers.begin(), askers.end(), asker) == askers.end()) {
+			askers.push_back(asker);
+		}
+		return;
+	}
+	if (_discovery_path_requests.size() >= MAX_REMEMBERED_DESTINATIONS) { return; }
+	double expires = OS::time() + Type::Transport::PATH_REQUEST_TIMEOUT;
+	_discovery_path_requests.push_back({destination_hash, PathRequestEntry(destination_hash, expires, asker)});
+}
+
+// RETICULUM_BEHAVIOUR.md §2: an accepted announce goes at once, as a path
+// response, to everyone waiting on a path request we forwarded for it.
+/*static*/ void Transport::answer_forwarded_path_requests(const Packet& announce) {
+	const Bytes& destination_hash = announce.destination_hash();
+	auto entry = flatmap_find(_discovery_path_requests, destination_hash);
+	if (entry == _discovery_path_requests.end()) { return; }
+	const std::vector<Interface> askers = std::move(entry->second._requesting_interfaces);
+	_discovery_path_requests.erase(entry);
+
+	Destination announced(Identity::recall(destination_hash), Type::Destination::OUT, Type::Destination::SINGLE, destination_hash);
 	for (const Interface& asker : askers) {
-		NOTICE("PATH-ANSWER - " + packet.destination_hash().toHex().substr(0,8) + " to " + asker.toString() + " (waiting request)");
-		Packet answer(
-			announce_destination,
-			asker,
-			packet.data(),
-			Type::Packet::ANNOUNCE,
-			Type::Packet::PATH_RESPONSE,
-			Type::Transport::TRANSPORT,
-			Type::Packet::HEADER_2,
-			_identity.hash(),
-			true,
-			packet.context_flag()
-		);
-		answer.hops(packet.hops());
-		answer.send();
+		NOTICE("PATH-ANSWER - " + destination_hash.toHex().substr(0,8) + " to " + asker.toString() + " (waiting request)");
+		Packet response(announced, asker, announce.data(), Type::Packet::ANNOUNCE, Type::Packet::PATH_RESPONSE,
+		                Type::Transport::TRANSPORT, Type::Packet::HEADER_2, _identity.hash(), true, announce.context_flag());
+		response.hops(announce.hops());
+		response.send();
 	}
 }
 
@@ -3882,7 +3841,6 @@ will announce it.
 					_held_announces.insert({announce_packet.destination_hash(), held_entry});
 					// BUG FIX: Must erase old entry before insert(),
 					// since std::map::insert() is a no-op when key exists.
-					// Python dict assignment overwrites, but C++ insert does not.
 					_announce_table.erase(announce_iter);
 				}
 
@@ -3905,11 +3863,7 @@ will announce it.
 		TRACE("Transport::path_request_handler: searching for unknown path to " + destination_hash.toHex());
 		auto waiting = flatmap_find(_discovery_path_requests, destination_hash);
 		if (waiting != _discovery_path_requests.end()) {
-			// Python batches a new asker onto the waiting request.
-			auto& askers = waiting->second._requesting_interfaces;
-			if (std::find(askers.begin(), askers.end(), attached_interface) == askers.end()) {
-				askers.push_back(attached_interface);
-			}
+			remember_asker(destination_hash, attached_interface);
 			DEBUG("There is already a waiting path request for destination " + destination_hash.toHex() + " on behalf of path request" + interface_str);
 		}
 		else {
@@ -3931,7 +3885,7 @@ will announce it.
 #if defined(FIREWALL_MODE)
 			// A path request from a LAN-side device always goes out; only
 			// one from the backbone waits for a slow interface's announce
-			// cap. (The reference likewise exempts its local clients.)
+			// cap (RETICULUM_BEHAVIOUR.md §7).
 			const bool recursive = attached_interface.is_backbone();
 #else
 			const bool recursive = true;
@@ -3952,14 +3906,7 @@ will announce it.
 				}
 			}
 
-			// Remember who asked, so the answer goes back to them when it
-			// arrives (Python's discovery_path_requests). Entries expire
-			// after PATH_REQUEST_TIMEOUT; the table is capped against floods.
-			static const size_t MAX_DISCOVERY_PATH_REQUESTS = 64;
-			if (attached_interface && _discovery_path_requests.size() < MAX_DISCOVERY_PATH_REQUESTS) {
-				_discovery_path_requests.push_back({destination_hash,
-					PathRequestEntry(destination_hash, OS::time() + Type::Transport::PATH_REQUEST_TIMEOUT, attached_interface)});
-			}
+			remember_asker(destination_hash, attached_interface);
 		}
 	}
 	else {
@@ -3975,86 +3922,75 @@ will announce it.
 	return 0;
 }
 
-// Interfaces at or above this bitrate send relayed announces uncapped, as
-// firewall mode decided. Slower ones (LoRa) keep the reference's cap.
-static const uint32_t ANNOUNCE_CAP_MAX_BITRATE = 50000;
-// The reference queues 16384 announces; this node's RAM holds far fewer. At a
-// 2% cap LoRa sends about one relayed announce a minute, so a longer queue
-// would only hold announces that have gone stale.
-static const size_t ANNOUNCE_QUEUE_MAX = 64;
+// RETICULUM_BEHAVIOUR.md §7: relayed announces get at most ANNOUNCE_CAP
+// percent of a slow interface's airtime.
+static const uint32_t ANNOUNCE_CAP_BELOW_BITRATE = 50000;  // bps
+// At 2% LoRa sends about one relayed announce a minute, so a longer queue
+// would only hold announces gone stale, in RAM this node is short of.
+static const size_t ANNOUNCE_QUEUE_LIMIT = 64;
 
-// The reference's announce cap (Transport.outbound): a relayed announce may
-// go out on a slow interface only once that interface's previous one has
-// had tx_time / announce_cap to clear. Otherwise it waits in the interface's
-// queue, which keeps only the newest announce per destination. Announces
-// that originate here (hops 0) are never capped.
-/*static*/ bool Transport::announce_cap_allows(const Interface& interface, const Packet& packet, double outbound_time) {
-	if (packet.hops() == 0) return true;
-	uint32_t bitrate = interface.bitrate();
-	if (bitrate == 0 || bitrate >= ANNOUNCE_CAP_MAX_BITRATE || interface.announce_cap() <= 0) return true;
+// How long sending this many bytes keeps an interface's announce cap busy:
+// the airtime over the cap's share. Nothing when either is unknown.
+static double cap_busy_for(const Interface& interface, size_t bytes) {
+	if (interface.bitrate() == 0 || interface.announce_cap() <= 0) { return 0; }
+	const double airtime = (double)(bytes * 8) / (double)interface.bitrate();
+	return airtime / interface.announce_cap();
+}
 
-	Interface& iface = const_cast<Interface&>(interface);
-	std::list<RNS::AnnounceEntry>& queue = iface.announce_queue();
-	if (queue.empty() && outbound_time > iface.announce_allowed_at()) {
-		double tx_time = (double)(packet.raw().size() * 8) / (double)bitrate;
-		iface.announce_allowed_at(outbound_time + tx_time / iface.announce_cap());
+/*static*/ bool Transport::announce_cap_allows(const Interface& interface, const Packet& announce, double now) {
+	const bool capped = announce.hops() > 0 && interface.bitrate() > 0
+	                    && interface.bitrate() < ANNOUNCE_CAP_BELOW_BITRATE && interface.announce_cap() > 0;
+	if (!capped) { return true; }
+
+	Interface& slow = const_cast<Interface&>(interface);
+	std::list<RNS::AnnounceEntry>& waiting = slow.announce_queue();
+	if (waiting.empty() && now > slow.announce_allowed_at()) {
+		slow.announce_allowed_at(now + cap_busy_for(slow, announce.raw().size()));
 		return true;
 	}
 
-	for (auto& entry : queue) {
-		if (entry._destination == packet.destination_hash()) {
-			uint64_t emitted = announce_emitted(packet);
-			if (emitted > entry._emitted) {
-				entry._time = outbound_time;
-				entry._hops = packet.hops();
-				entry._emitted = emitted;
-				entry._raw = packet.raw();
-			}
-			return false;
+	const Bytes& destination = announce.destination_hash();
+	auto queued = std::find_if(waiting.begin(), waiting.end(),
+	                           [&](const RNS::AnnounceEntry& entry) { return entry._destination == destination; });
+	if (queued != waiting.end()) {
+		// One per destination: a newer announce takes the queued one's place.
+		const uint64_t emitted = announce_emitted(announce);
+		if (emitted > queued->_emitted) {
+			*queued = RNS::AnnounceEntry(destination, now, announce.hops(), emitted, announce.raw());
 		}
 	}
-	if (queue.size() < ANNOUNCE_QUEUE_MAX) {
-		RNS::AnnounceEntry entry(packet.destination_hash(), outbound_time, packet.hops(), announce_emitted(packet), packet.raw());
-		iface.add_announce(entry);
-		DEBUG("Announce for " + packet.destination_hash().toHex().substr(0,8) + " queued on " + iface.toString() + " by the announce cap (height " + std::to_string(queue.size()) + ")");
+	else if (waiting.size() < ANNOUNCE_QUEUE_LIMIT) {
+		RNS::AnnounceEntry entry(destination, now, announce.hops(), announce_emitted(announce), announce.raw());
+		slow.add_announce(entry);
+		DEBUG("Announce cap: " + destination.toHex().substr(0,8) + " waits on " + slow.toString() + " (" + std::to_string(waiting.size()) + " waiting)");
 	}
 	else {
-		DEBUG("Announce for " + packet.destination_hash().toHex().substr(0,8) + " dropped: announce queue on " + iface.toString() + " is full");
+		DEBUG("Announce cap: " + destination.toHex().substr(0,8) + " dropped, " + slow.toString() + "'s queue is full");
 	}
 	return false;
 }
 
-// The reference's Interface.process_announce_queue, run from jobs(): once an
-// interface's cap allows, send its queued announce with the fewest hops
-// (oldest first), and drop any older than QUEUED_ANNOUNCE_LIFE.
+// RETICULUM_BEHAVIOUR.md §7, from jobs(): each interface whose cap has
+// cleared sends one queued announce.
 /*static*/ void Transport::process_announce_queues() {
-	double now = OS::time();
+	const double now = OS::time();
 	for (auto& [hash, interface] : _interfaces) {
-		std::list<RNS::AnnounceEntry>& queue = interface.announce_queue();
-		if (queue.empty() || now < interface.announce_allowed_at()) continue;
+		std::list<RNS::AnnounceEntry>& waiting = interface.announce_queue();
+		if (waiting.empty() || now < interface.announce_allowed_at()) { continue; }
 
-		queue.remove_if([now](const RNS::AnnounceEntry& entry) {
+		waiting.remove_if([now](const RNS::AnnounceEntry& entry) {
 			return now > entry._time + Type::Reticulum::QUEUED_ANNOUNCE_LIFE;
 		});
-		if (queue.empty()) continue;
+		if (waiting.empty()) { continue; }
 
-		auto selected = queue.begin();
-		for (auto iter = queue.begin(); iter != queue.end(); ++iter) {
-			if (iter->_hops < selected->_hops || (iter->_hops == selected->_hops && iter->_time < selected->_time)) {
-				selected = iter;
-			}
-		}
-
-		double wait_time = 0;
-		if (interface.bitrate() > 0 && interface.announce_cap() > 0) {
-			double tx_time = (double)(selected->_raw.size() * 8) / (double)interface.bitrate();
-			wait_time = tx_time / interface.announce_cap();
-		}
-		interface.announce_allowed_at(now + wait_time);
-
-		Bytes raw = selected->_raw;
-		DEBUG("Sending queued announce for " + selected->_destination.toHex().substr(0,8) + " on " + interface.toString() + " (" + std::to_string(queue.size() - 1) + " left)");
-		queue.erase(selected);
+		// Fewest hops first; among those, the one queued earliest.
+		auto next = std::min_element(waiting.begin(), waiting.end(), [](const RNS::AnnounceEntry& a, const RNS::AnnounceEntry& b) {
+			return a._hops != b._hops ? a._hops < b._hops : a._time < b._time;
+		});
+		interface.announce_allowed_at(now + cap_busy_for(interface, next->_raw.size()));
+		const Bytes raw = next->_raw;
+		DEBUG("Announce cap: sending " + next->_destination.toHex().substr(0,8) + " on " + interface.toString() + " (" + std::to_string(waiting.size() - 1) + " left)");
+		waiting.erase(next);
 		transmit(interface, raw);
 	}
 }

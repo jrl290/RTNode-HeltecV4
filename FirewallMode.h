@@ -155,7 +155,7 @@ struct FirewallState {
     double   advert_lon;      // Longitude in decimal degrees (-180..180)
     bool     advert_jitter;   // Randomize ~0.5 km offset for advertised coords
     // Include the IFAC network name and passphrase in adverts, so anyone who
-    // receives one can join — RNS's publish_ifac, off by default.
+    // receives one can join. Off by default, as on other Reticulum nodes.
     bool     advert_publish_ifac;
 
     // Bluetooth LE peers (BleInterface.h): on unless turned off. Applied at

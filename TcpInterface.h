@@ -84,7 +84,7 @@ struct TcpClient {
     uint8_t    rxbuf[TCP_IF_HW_MTU];
     uint16_t   rxlen;
     uint32_t   frames_in;            // delivered frames, for the per-pass budget
-    RNS::IngressState ingress;  // server mode: this client's ingress control
+    RNS::IngressGate ingress{RNS::ingress_clock()};  // server mode: this client's ingress control
 };
 
 // ─── TcpInterface Class ─────────────────────────────────────────────────────
@@ -363,7 +363,7 @@ private:
         c.truncated = false;
         c.kiss_command = 0xFF;
         c.rxlen = 0;
-        c.ingress = RNS::IngressState();  // its held announces go with it, as in Python
+        c.ingress = RNS::IngressGate(RNS::ingress_clock());  // its held announces go with it
         _num_clients--;
 
         uint32_t heap_after = ESP.getFreeHeap();
@@ -372,22 +372,24 @@ private:
                       (int)(heap_after - heap_before));
     }
 
-    // Ingress control: Python spawns an interface per accepted TCP client, each
-    // with its own announce-burst state, so one flooding client does not get
-    // every other client's announces held. Server mode keeps a state per
-    // client slot; client mode (one connection) uses the interface's own.
-    virtual RNS::IngressState& ingress_source() override {
+    // Ingress control (RETICULUM_BEHAVIOUR.md §1): each client is its own
+    // source, so one flooding client does not get every other client's
+    // announces held. Server mode keeps a gate per client slot; client mode
+    // (one connection) uses the interface's own.
+    virtual RNS::IngressGate& ingress_source(int& client) override {
         if (_mode == TCP_IF_MODE_SERVER && _last_rx_client_idx >= 0 && _last_rx_client_idx < TCP_IF_MAX_CLIENTS) {
+            client = _last_rx_client_idx;
             return _clients[_last_rx_client_idx].ingress;
         }
+        client = -1;
         return _ingress;
     }
 
-    virtual void for_each_ingress(const std::function<void(RNS::IngressState&)>& visit) override {
-        visit(_ingress);
+    virtual void for_each_ingress(const std::function<void(RNS::IngressGate&, int client)>& visit) override {
+        visit(_ingress, -1);
         if (_mode != TCP_IF_MODE_SERVER) return;
         for (int i = 0; i < TCP_IF_MAX_CLIENTS; i++) {
-            if (_clients[i].active) visit(_clients[i].ingress);
+            if (_clients[i].active) visit(_clients[i].ingress, i);
         }
     }
 
@@ -530,8 +532,7 @@ private:
                 _clients[i].kiss_command = 0xFF;
                 _clients[i].rxlen = 0;
                 _clients[i].last_activity = millis();
-                _clients[i].ingress = RNS::IngressState();
-                _clients[i].ingress.client = i;
+                _clients[i].ingress = RNS::IngressGate(RNS::ingress_clock());
                 _num_clients++;
                 Serial.printf("[TcpIF] Client %d connected from %s\r\n",
                               i, _clients[i].client.remoteIP().toString().c_str());

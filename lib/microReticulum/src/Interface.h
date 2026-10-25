@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "Bytes.h"
 #include "Type.h"
+#include "AnnounceGate.h"
 
 #include <ArduinoJson.h>
 
@@ -35,32 +36,16 @@ namespace RNS {
 		Bytes _raw;
 	};
 
-	// An announce held by ingress control. raw is the packet exactly as it
-	// arrived (IFAC included), so a released announce is verified again.
-	struct HeldAnnounce {
-		Bytes destination_hash;
-		Bytes raw;
-		uint8_t hops = 0;
-	};
+	// Ingress control (RETICULUM_BEHAVIOUR.md §1): one gate per source, which
+	// is an interface, or a client slot on an interface that serves several
+	// clients (TcpInterface). Held announces are kept exactly as they arrived,
+	// IFAC included, so each is checked in full when it is let in.
+	using IngressGate = AnnounceGate<Bytes>;
 
-	// Ingress control state (Python RNS 1.5.2 Interface; Type::Interface IC_*).
-	// One per interface, or one per client on an interface that multiplexes
-	// clients (TcpInterface) — where Python spawns an interface per client, so
-	// one flooding client does not get every other client's announces held.
-	// Times are Interface::ingress_clock() milliseconds.
-	struct IngressState {
-		IngressState();
-		int8_t client = -1;         // client slot, for logs; -1 for the interface itself
-		uint64_t created;           // age decides the burst threshold
-		uint32_t ia_times[Type::Interface::IA_FREQ_SAMPLES];  // announce arrivals, oldest at ia_head
-		uint8_t ia_head = 0;
-		uint8_t ia_count = 0;
-		bool burst_active = false;
-		uint64_t burst_activated = 0;
-		uint64_t burst_sustained = 0;
-		uint64_t held_release = 0;
-		std::vector<HeldAnnounce> held;
-	};
+	// Milliseconds since boot, the clock ingress control runs on. OS::time()
+	// carries Reticulum's saved time offset, restored after interfaces
+	// register, so it jumps at boot.
+	uint64_t ingress_clock();
 
 	class InterfaceImpl : public std::enable_shared_from_this<InterfaceImpl> {
 
@@ -121,13 +106,13 @@ namespace RNS {
 		bool _is_local_client = false;
 		//Bytes _hash;
 		HInterface _parent_interface;
-		// Ingress control (Python RNS Interface; Type::Interface IC_*).
-		IngressState _ingress;
-		// The ingress state of whoever is delivering the packet now: this
-		// interface's own, or a client's on interfaces that multiplex clients.
-		virtual IngressState& ingress_source() { return _ingress; }
-		// Every ingress state this interface keeps, for releases and counts.
-		virtual void for_each_ingress(const std::function<void(IngressState&)>& visit) { visit(_ingress); }
+		// Ingress control: this interface's own gate.
+		IngressGate _ingress{ingress_clock()};
+		// The gate of whoever is delivering the packet now: this interface's
+		// own (client -1), or a client slot's on interfaces that serve several.
+		virtual IngressGate& ingress_source(int& client) { client = -1; return _ingress; }
+		// Every gate this interface keeps, with its client slot (-1: its own).
+		virtual void for_each_ingress(const std::function<void(IngressGate&, int client)>& visit) { visit(_ingress, -1); }
 		//Transport& _owner;
 
 	friend class Interface;
@@ -235,22 +220,18 @@ namespace RNS {
 		inline uint8_t ifac_size() const { assert(_impl); return _impl->_ifac_size; }
 		inline void ifac_size(uint8_t size) { assert(_impl); _impl->_ifac_size = size; }
 		void setup_ifac(const char* ifac_netname, const char* ifac_netkey);
-		// Ingress control (Python RNS Interface).
-		// These act on the ingress state of the packet being delivered.
-		void received_announce();
-		bool should_ingress_limit();
-		// Replaces the announce held for the same destination, or adds one when
-		// may_add and the source is under its own limit. False: dropped (also,
-		// as in Python, any announce PATHFINDER_M - 1 hops or more away).
-		bool hold_announce(const Bytes& destination_hash, const Bytes& raw, uint8_t hops, bool may_add);
-		// Python's per-interface jobs, run every 5 s for each ingress state:
-		// should_ingress_limit(), then process_held_announces(). Released
-		// announces are appended for Transport to feed back through inbound().
-		void ingress_jobs(std::vector<Bytes>& released);
-		// Milliseconds since boot. OS::time() carries Reticulum's saved time
-		// offset, restored after interfaces register, so it jumps at boot.
-		static uint64_t ingress_clock();
-		size_t held_announce_count() const;
+		// Ingress control (RETICULUM_BEHAVIOUR.md §1). The first three act on
+		// the gate of whoever is delivering the packet now.
+		void announce_arrived();
+		// Looks at the source, logging a flood's start and end. True: hold
+		// announces for new destinations from it.
+		bool holding_new_announces();
+		// False: not held (too far away, or no room), so dropped.
+		bool hold_new_announce(const Bytes& destination_hash, const Bytes& raw, uint8_t hops, bool room_overall);
+		// The 5-second round for each of this interface's gates: look, then
+		// let in at most one held announce, appended to released.
+		void release_held(std::vector<Bytes>& released);
+		size_t held_announces() const;
 		inline Type::Interface::modes mode() const { assert(_impl); return _impl->_mode; }
 		inline void mode(Type::Interface::modes mode) { assert(_impl); _impl->_mode = mode; }
 		inline uint32_t bitrate() const { assert(_impl); return _impl->_bitrate; }

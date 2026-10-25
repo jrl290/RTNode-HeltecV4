@@ -282,8 +282,8 @@ namespace RNS {
 		};
 
 		// CBA TODO Analyze safety of using Inrerface references here
-		// A path request forwarded on behalf of others (Python's
-		// discovery_path_requests): who is waiting for the answer, until when.
+		// A path request forwarded on behalf of others (RETICULUM_BEHAVIOUR.md
+		// §2): who is waiting for the answer, and until when.
 		class PathRequestEntry {
 		public:
 			PathRequestEntry(const Bytes& destination_hash, double timeout, const Interface& requesting_interface) :
@@ -370,12 +370,13 @@ namespace RNS {
 		static void register_interface(Interface& interface);
 		static void deregister_interface(const Interface& interface);
 		// A peer left an interface that the next peer will reuse (a Bluetooth
-		// slot): forget the paths, links and reverse entries through it, as
-		// Python RNS does for a detached spawned interface. Returns how many.
+		// slot): forget the paths, links and reverse entries through it
+		// (RETICULUM_BEHAVIOUR.md §4). Returns how many.
 		static size_t forget_interface_routes(const Interface& interface);
-		// An accepted announce answers any path request we forwarded for its
-		// destination: send it as a path response on each asker's interface.
-		static void answer_waiting_path_requests(const Packet& packet);
+		// Path requests we forward for others (RETICULUM_BEHAVIOUR.md §2):
+		// remember who asked, and answer them when the announce arrives.
+		static void remember_asker(const Bytes& destination_hash, const Interface& asker);
+		static void answer_forwarded_path_requests(const Packet& announce);
 		static void register_local_client_interface(Interface& interface);
 		inline static const std::map<Bytes, Interface&> get_interfaces() { return _interfaces; }
 		static void register_destination(Destination& destination);
@@ -411,7 +412,7 @@ namespace RNS {
 		static void path_request(const Bytes& destination_hash, bool is_from_local_client, const Interface& attached_interface, const Bytes& requestor_transport_id = {}, const Bytes& tag = {});
 		static bool detach_interfaces();
 		static void drop_announce_queues();
-		static bool announce_cap_allows(const Interface& interface, const Packet& packet, double outbound_time);
+		static bool announce_cap_allows(const Interface& interface, const Packet& announce, double now);
 		static void process_announce_queues();
 		static uint64_t announce_emitted(const Packet& packet);
 		static void write_packet_hashlist();
@@ -550,9 +551,9 @@ namespace RNS {
 		static double _start_time;
 		static bool _jobs_locked;
 		// Holds _jobs_locked for one inbound()/outbound() call and clears it on
-		// every way out. Python clears jobs_locked before each return; the
-		// returns here that did not left jobs() — announce rebroadcasts, table
-		// culls — stopped until some other packet went all the way through.
+		// every way out. Every return has to clear it: the returns that did
+		// not left jobs() — announce rebroadcasts, table culls — stopped until
+		// some other packet went all the way through.
 		struct JobsLock {
 			JobsLock() { _jobs_locked = true; }
 			~JobsLock() { _jobs_locked = false; }
