@@ -38,6 +38,7 @@
 #include "Advertise.h"
 #include "BleInterface.h"
 #include "MdnsService.h"
+#include "EthernetUsb.h"
 #include "esp_bt.h"
 #endif
 #include "ResourceMonitor.h"
@@ -223,6 +224,10 @@ void on_log(const char* msg, RNS::LogLevel level) {
   String line = RNS::getTimeString() + String(" [") + RNS::getLevelName(level) + "] " + msg + "\n";
 	Serial.print(line);
 	Serial.flush();
+#ifdef FIREWALL_MODE
+	// While the USB port is an Ethernet adapter's host, USB serial is gone.
+	ethernet_usb::mirror_log(line);
+#endif
 
 #ifdef HAS_SDCARD
 	File file = SD.open("/logfile.txt", FILE_APPEND);
@@ -479,7 +484,23 @@ static void boundary_apply_heap_relief(uint8_t heap_stage) {
 
 #endif  // HAS_RNS
 
+#ifdef FIREWALL_MODE
+// The TCP interfaces (backbones and the local server) have a network: WiFi
+// joined or running its own access point, or the USB Ethernet cable up with
+// an address (EthernetUsb.h).
+static bool network_is_up() {
+  return (firewall_state.wifi_enabled && (wifi_is_connected() || wifi_mode == WR_WIFI_AP)) ||
+         ethernet_usb::has_address();
+}
+#endif
+
 void setup() {
+#ifdef FIREWALL_MODE
+  // Before anything uses USB serial: the port may still belong to the USB
+  // host from before a software restart (EthernetUsb.h).
+  ethernet_usb::boot_port_to_serial();
+#endif
+
   // Create the Reticulum heap pool (PSRAM on the V4) now that the Arduino core
   // has brought PSRAM up. C++ static constructors run before that, so anything
   // they allocated came from malloc() and is freed there.
@@ -1059,6 +1080,11 @@ void setup() {
       firewall_state.wifi_enabled = true;
       Serial.write("[BENCH] overrides: WiFi on (saved settings untouched)\r\n");
 #endif
+#if defined(RTNODE_BENCH_ETH_ON) && defined(RTNODE_ETH_USB)
+      // Ethernet tests (USB_ETHERNET_PLAN.md) on a node whose portal has it off.
+      firewall_state.eth_enabled = true;
+      Serial.write("[BENCH] overrides: Ethernet on (saved settings untouched)\r\n");
+#endif
 #ifdef RTNODE_BENCH_WAN_HOST
       // WAN contract tests (tests/bench_contracts.py wan): backbone 1 goes to
       // a stand-in backbone on the bench (tests/wan-backbone/config), never a
@@ -1121,12 +1147,26 @@ void setup() {
         // Off means off: nothing before this point may have left it running.
         if (wifi_initialized) { wifi_remote_stop(); }
         wifi_mode = WR_WIFI_OFF;
-        HEAD("Firewall Mode: WiFi DISABLED (LoRa-only repeater)", RNS::LOG_TRACE);
+        HEAD(firewall_state.eth_enabled ? "Firewall Mode: WiFi DISABLED"
+                                        : "Firewall Mode: WiFi DISABLED (LoRa-only repeater)", RNS::LOG_TRACE);
       }
 
-      // Register configured TCP backbone interfaces.
+      // Wired Ethernet through a USB adapter (EthernetUsb.h): the USB port
+      // becomes its host if Ethernet is on and no computer is on the port.
+      // The DHCP name is the one WiFi gives the router (Remote.h).
+      {
+        char eth_hostname[10];
+        memcpy(eth_hostname, bt_devname, 5);
+        memcpy(eth_hostname + 5, bt_devname + 6, 4);
+        eth_hostname[9] = 0;
+        ethernet_usb::begin(firewall_state.eth_enabled, eth_hostname);
+        firewall_state.eth_running = ethernet_usb::running();
+      }
+
+      // Register configured TCP backbone interfaces: on WiFi or the cable,
+      // whichever is up (network_is_up()).
       size_t configured_backbones = 0;
-      if (firewall_state.wifi_enabled) {
+      if (firewall_state.wifi_enabled || firewall_state.eth_running) {
         for (size_t slot = 0; slot < FIREWALL_BACKBONE_SLOTS; slot++) {
           FirewallBackboneSlot& backbone = firewall_state.backbones[slot];
           if (!backbone.enabled) {
@@ -1166,8 +1206,9 @@ void setup() {
         HEAD("Firewall Mode: TCP backbones DISABLED", RNS::LOG_TRACE);
       }
 
-      // Register local TCP server if enabled
-      if (firewall_state.wifi_enabled && firewall_state.ap_tcp_enabled) {
+      // Register local TCP server if enabled. It listens on every interface,
+      // so the cable's LAN reaches it as WiFi's does.
+      if ((firewall_state.wifi_enabled || firewall_state.eth_running) && firewall_state.ap_tcp_enabled) {
         local_tcp_interface_ptr = new TcpInterface(
             TCP_IF_MODE_SERVER,
             firewall_state.ap_tcp_port,
@@ -1219,7 +1260,7 @@ void setup() {
 
 #ifdef FIREWALL_MODE
       // Start TCP interfaces after Reticulum is running
-      if (firewall_state.wifi_enabled && (wifi_is_connected() || wifi_mode == WR_WIFI_AP)) {
+      if (network_is_up()) {
         for (size_t slot = 0; slot < FIREWALL_BACKBONE_SLOTS; slot++) {
           if (tcp_interface_ptrs[slot]) {
             tcp_interface_ptrs[slot]->start();
@@ -1232,12 +1273,12 @@ void setup() {
           local_tcp_interface_ptr->start();
           HEAD("Firewall Mode: Local TCP server started", RNS::LOG_TRACE);
         }
-        if (wifi_is_connected() && firewall_state.mdns_enabled) {
+        if ((wifi_is_connected() || ethernet_usb::has_address()) && firewall_state.mdns_enabled) {
           uint16_t advert_port = firewall_state.ap_tcp_enabled ? firewall_state.ap_tcp_port : 0;
           mdns_service::start_sta_auto(firewall_state.mdns_hostname, advert_port);
         }
-      } else if (firewall_state.wifi_enabled) {
-        HEAD("Firewall Mode: Waiting for WiFi before starting TCP interfaces", RNS::LOG_WARNING);
+      } else if (firewall_state.wifi_enabled || firewall_state.eth_running) {
+        HEAD("Firewall Mode: Waiting for the network before starting TCP interfaces", RNS::LOG_WARNING);
       }
 
       res::boot_report();
@@ -1342,8 +1383,10 @@ void setup() {
                    firewall_state.ap_tcp_port);
           HEAD(_bm_info, RNS::LOG_TRACE);
         }
-        if (!firewall_state.wifi_enabled) {
+        if (!firewall_state.wifi_enabled && !firewall_state.eth_running) {
           HEAD("WiFi: DISABLED (LoRa-only repeater)", RNS::LOG_TRACE);
+        } else if (!firewall_state.wifi_enabled) {
+          HEAD("WiFi: DISABLED; Ethernet carries the TCP interfaces", RNS::LOG_TRACE);
         }
       }
 #endif
@@ -2994,6 +3037,8 @@ void loop() {
   // For the display; Bluetooth runs with WiFi off too (LoRa-only repeater).
   firewall_state.ble_peers = firewall_state.ble_running ? ble::connected_peers() : 0;
 #endif
+  ethernet_usb::loop();
+  firewall_state.eth_up = ethernet_usb::has_address();
 #endif
 
 #ifdef FIREWALL_MODE
@@ -3080,6 +3125,11 @@ void loop() {
     }
 
     bool wifi_now = wifi_is_connected();
+    // While the cable is up with an address, a WiFi loss restarts nothing:
+    // the backbones may be on the cable, and a restart would drop them. WiFi
+    // keeps trying to rejoin on its own (wifi_update_status()). The watchdog
+    // acts only when WiFi is the node's only network (USB_ETHERNET_PLAN.md).
+    bool wired_now = ethernet_usb::has_address();
 
     // Arm the watchdog once WiFi has been up at least once
     if (!_wifi_watchdog_armed && wifi_now) {
@@ -3087,7 +3137,7 @@ void loop() {
       _wifi_lost_at = 0;
     }
 
-    if (_wifi_watchdog_armed && !wifi_now) {
+    if (_wifi_watchdog_armed && !wifi_now && !wired_now) {
       if (_wifi_lost_at == 0) {
         _wifi_lost_at = millis();
         Serial.printf("\r\n[WATCHDOG] WiFi lost at %lu ms (grace %lu ms)\r\n",
@@ -3114,13 +3164,16 @@ void loop() {
       // WiFi recovered within grace period
       Serial.printf("[WATCHDOG] WiFi back after %lu ms\r\n", millis() - _wifi_lost_at);
       _wifi_lost_at = 0;
+    } else if (_wifi_watchdog_armed && wired_now && _wifi_lost_at != 0) {
+      ethernet_usb::log_line("[WATCHDOG] WiFi still down, but the cable is up: no restart");
+      _wifi_lost_at = 0;
     }
   }
 
   // Firewall Mode: poll TCP interfaces for incoming data
-  if (firewall_state.wifi_enabled) {
-    // Start TCP interfaces if WiFi just connected and not yet started
-    if (wifi_is_connected()) {
+  if (firewall_state.wifi_enabled || firewall_state.eth_running) {
+    // Start TCP interfaces once the network (WiFi or the cable) is up
+    if (network_is_up()) {
       bool started_backbone = false;
       for (size_t slot = 0; slot < FIREWALL_BACKBONE_SLOTS; slot++) {
         if (tcp_interface_ptrs[slot] && !tcp_interface_ptrs[slot]->isStarted()) {
@@ -3129,11 +3182,11 @@ void loop() {
         }
       }
       if (started_backbone) {
-        Serial.println("[Firewall] WiFi connected, TCP backbones started");
+        Serial.println("[Firewall] network up, TCP backbones started");
       }
       if (local_tcp_interface_ptr && !local_tcp_interface_ptr->isStarted()) {
         local_tcp_interface_ptr->start();
-        Serial.println("[Firewall] WiFi connected, local TCP server started");
+        Serial.println("[Firewall] network up, local TCP server started");
       }
     }
     for (size_t slot = 0; slot < FIREWALL_BACKBONE_SLOTS; slot++) {
@@ -3253,11 +3306,11 @@ void loop() {
   #if HAS_WIFI
     if (wifi_initialized) update_wifi();
     #ifdef FIREWALL_MODE
-    // Late-start mDNS once WiFi finishes its asynchronous association.
-    // The function early-exits if already running or WiFi is not yet up,
-    // so calling it every loop iteration is cheap.
-    if (!mdns_service::is_running() && wifi_is_connected() &&
-        firewall_state.wifi_enabled && firewall_state.mdns_enabled) {
+    // Late-start mDNS once WiFi finishes its asynchronous association, or
+    // the cable has an address. The function early-exits if already running
+    // or neither is up, so calling it every loop iteration is cheap.
+    if (!mdns_service::is_running() && firewall_state.mdns_enabled &&
+        ((wifi_is_connected() && firewall_state.wifi_enabled) || ethernet_usb::has_address())) {
       uint16_t advert_port = firewall_state.ap_tcp_enabled ? firewall_state.ap_tcp_port : 0;
       mdns_service::start_sta_auto(firewall_state.mdns_hostname, advert_port);
     }

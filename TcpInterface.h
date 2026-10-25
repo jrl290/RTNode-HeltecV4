@@ -17,6 +17,7 @@
 #ifdef FIREWALL_MODE
 
 #include <WiFi.h>
+#include "EthernetUsb.h"
 #include <lwip/sockets.h>   // SO_LINGER — force RST to free lwIP PCBs immediately
 #include <netinet/tcp.h>    // TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT
 #include <Interface.h>
@@ -196,16 +197,16 @@ public:
             }
         }
 
-        // Client mode reconnection (with WiFi check + exponential backoff)
+        // Client mode reconnection (with network check + exponential backoff)
         if (_mode == TCP_IF_MODE_CLIENT && _num_clients == 0) {
             // _reconnect_interval > TCP_IF_RECONNECT_MAX means we've given up
             if (_reconnect_interval > TCP_IF_RECONNECT_MAX) return;
             uint32_t now = millis();
             if (now - _last_reconnect >= _reconnect_interval) {
-                if (WiFi.status() == WL_CONNECTED) {
+                if (WiFi.status() == WL_CONNECTED || ethernet_usb::has_address()) {
                     _connect_client();
                 } else {
-                    // WiFi not connected — skip TCP attempt, just update timer
+                    // No network (WiFi, or the USB Ethernet cable) — skip TCP attempt, just update timer
                     _last_reconnect = now;
                 }
             }

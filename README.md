@@ -191,6 +191,7 @@ The web form's sections include:
 | Field | Description |
 |-------|-------------|
 | **WiFi** | Enable/Disable (disable for LoRa-only repeater mode) |
+| **Ethernet (USB adapter, experimental)** | V4 only. Enable/Disable, **disabled by default**. A USB Ethernet adapter that speaks CDC-ECM, on the USB-C port, carries the TCP backbones and the local TCP server, as WiFi does, with WiFi on or off. The board can't power the adapter: use a powered USB hub or a Y-cable. While the adapter is in use USB serial is off until the next restart, and the log goes to the TX pin (GPIO43, 115200 baud); with a computer on the USB port at power-up the port stays USB serial. Takes effect after a restart |
 | **SSID** | Your WiFi network name |
 | **Password** | WiFi password |
 
@@ -253,7 +254,7 @@ The 128×64 OLED is split into two panels:
 
 ```
  ● LORA  ● BLE   ← radio online; BLE filled = a Bluetooth peer connected (V4)
- ○ wifi          ← unfilled circle = WiFi disconnected
+ ○ wifi  ● ETH   ← unfilled circle = WiFi disconnected; ETH filled = wired address (V4)
  ● WAN           ← filled = backbone TCP connected
  ● LAN           ← filled = local TCP client connected
  ────────────────
@@ -265,6 +266,7 @@ The 128×64 OLED is split into two panels:
 - **Unfilled circle (○)** = inactive/disconnected
 - Labels are UPPERCASE when active, lowercase when inactive (except LAN which is always uppercase)
 - **BLE** sits beside LORA on the V4: `ble` with an unfilled circle while Bluetooth waits for a peer, `BLE` filled once a Columba phone or Prns node is connected. **Hidden** when Bluetooth is disabled in configuration, or cannot run (no PSRAM)
+- **ETH** sits beside WIFI, under BLE, on the V4: `eth` with an unfilled circle while the USB port hosts the Ethernet adapter but has no wired address yet, `ETH` filled once DHCP has given one. **Hidden** when Ethernet is disabled in configuration, or the port stayed USB serial because a computer was on it at power-up
 - **LAN row is hidden** when the Local TCP Server is disabled in configuration — the remaining layout stays in place
 
 ### Right Panel — Device Info (64×64)
@@ -468,4 +470,7 @@ Based on:
 - [RNode Firmware](https://github.com/markqvist/RNode_Firmware) by Mark Qvist (GPL-3.0)
 - [microReticulum](https://github.com/attermann/microReticulum) by Chris Attermann (GPL-3.0)
 - [Reticulum](https://reticulum.network/) by Mark Qvist (MIT)
+
+Includes:
+- [CherryUSB](https://github.com/cherry-embedded/CherryUSB) v1.6.1 by sakumisu, with files by Espressif Systems and Loogg (Apache-2.0), the USB host behind Ethernet through a USB adapter on the V4. Its notices and license are kept in [lib/CherryUSB](lib/CherryUSB); RTNode's changes to it are listed in [lib/CherryUSB/RTNODE.md](lib/CherryUSB/RTNODE.md)
 

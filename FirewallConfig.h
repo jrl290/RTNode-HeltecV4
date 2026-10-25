@@ -276,8 +276,35 @@ static void config_send_html() {
     html += F(">Enabled</option>");
     html += F("<option value='0'");
     if (!firewall_state.wifi_enabled) html += F(" selected");
+#ifdef RTNODE_ETH_USB
+    // With the cable on, WiFi off no longer means LoRa only
+    if (firewall_state.eth_enabled) html += F(">Disabled</option>");
+    else
+#endif
     html += F(">Disabled (LoRa-only repeater)</option>");
     html += F("</select>");
+
+#ifdef RTNODE_ETH_USB
+    // Ethernet through a USB adapter (EthernetUsb.h): in the WiFi section, as
+    // it carries what WiFi carries, from the same settings. Off by default.
+    html += F(
+        "<label>Ethernet (USB adapter, experimental)</label>"
+        "<select name='eth_en'>"
+    );
+    html += F("<option value='1'");
+    if (firewall_state.eth_enabled) html += F(" selected");
+    html += F(">Enabled</option>");
+    html += F("<option value='0'");
+    if (!firewall_state.eth_enabled) html += F(" selected");
+    html += F(">Disabled</option>");
+    html += F("</select>");
+    html += F("<p class='note'>Experimental. A USB Ethernet adapter that speaks CDC-ECM, on the USB-C "
+              "port, carries the TCP backbones and the local TCP server below, as WiFi does, with WiFi "
+              "on or off. The board can't power the adapter: use a powered USB hub or a Y-cable. "
+              "While the adapter is in use, USB serial is off until the next restart (the log goes to "
+              "the TX pin at 115200); with a computer on the USB port at power-up, the port stays USB "
+              "serial. Takes effect after a restart.</p>");
+#endif
 
     html += F(
         "<label>SSID</label>"
@@ -717,6 +744,11 @@ static void config_handle_save() {
 
     // ── WiFi enable setting ──
     firewall_state.wifi_enabled = (config_server->arg("wifi_en").toInt() == 1);
+    // Only where the form has the setting (the V4 builds), so a save
+    // elsewhere leaves it as it was
+    if (config_server->hasArg("eth_en")) {
+        firewall_state.eth_enabled = (config_server->arg("eth_en").toInt() == 1);
+    }
 
     // ── Display blanking (EEPROM stores minutes, 0 = disabled) ──
     int blank_minutes = config_server->arg("disp_blank").toInt();

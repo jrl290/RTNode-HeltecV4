@@ -1,0 +1,28 @@
+{
+  "name": "CherryUSB",
+  "version": "1.6.1",
+  "description": "CherryUSB v1.6.1 host subset (core, hub, CDC-ECM, DWC2, ESP-IDF OSAL and netif glue, Apache-2.0) with RTNode's changes, and RTNode's glue in rtnode/ (GPL-3). For wired Ethernet through a USB adapter on the Heltec V4 and V4 R8; see RTNODE.md.",
+  "license": "Apache-2.0",
+  "platforms": "espressif32",
+  "build": {
+    "srcFilter": [
+      "+<core/usbh_core.c>",
+      "+<class/hub/usbh_hub.c>",
+      "+<class/cdc/usbh_cdc_ecm.c>",
+      "+<port/dwc2/usb_hc_dwc2.c>",
+      "+<port/dwc2/usb_glue_esp.c>",
+      "+<osal/idf/usb_osal_idf.c>",
+      "+<platform/idf/usbh_net.c>",
+      "+<rtnode/eth_usb.c>"
+    ],
+    "flags": [
+      "-Icommon",
+      "-Icore",
+      "-Iclass/hub",
+      "-Iclass/cdc",
+      "-Iport/dwc2",
+      "-Iosal/idf",
+      "-DCONFIG_USBHOST_PLATFORM_CDC_ECM"
+    ]
+  }
+}

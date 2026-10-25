@@ -108,13 +108,14 @@
 #define ADDR_CONF_PROBE_EN      0x23C // rnprobe responder enable (1 byte; 0x73 = enabled, 0xFF = unset/disabled)
 #define ADDR_CONF_ADVERT_IFAC   0x23D // Publish IFAC name + passphrase in adverts (1 byte; 0x73 = yes, 0xFF = unset = no)
 #define ADDR_CONF_BLE_EN        0x23E // Bluetooth peers (1 byte; 0x00 = off, 0x73 or 0xFF = unset = on)
+#define ADDR_CONF_ETH_EN        0x23F // Ethernet through a USB adapter (1 byte; 0x73 = on, 0x00 or 0xFF = off)
 // Extra backbone slots 1-3 (slot 0 remains in the legacy BTCP/BHOST/BHPORT
 // fields for backward compatibility with existing devices).
 #define ADDR_CONF_BSLOT_BASE    0x173
 #define ADDR_CONF_BSLOT_EN(slot)   (ADDR_CONF_BSLOT_BASE + ((slot) - 1) * FIREWALL_BACKBONE_SLOT_BYTES)
 #define ADDR_CONF_BSLOT_HOST(slot) (ADDR_CONF_BSLOT_EN(slot) + 1)
 #define ADDR_CONF_BSLOT_PORT(slot) (ADDR_CONF_BSLOT_HOST(slot) + FIREWALL_BACKBONE_HOST_LEN)
-// Total: 0x23E (574 bytes — still within the extended CONFIG area used on ESP32)
+// Total: 0x23F (575 bytes — still within the extended CONFIG area used on ESP32)
 
 #define FIREWALL_ENABLE_BYTE 0x73
 #define FIREWALL_APP_MARKER0 0x52
@@ -161,6 +162,10 @@ struct FirewallState {
     // Bluetooth LE peers (BleInterface.h): on unless turned off. Applied at
     // boot, since the controller's memory is released when it is off.
     bool     ble_enabled;
+    // Wired Ethernet through a USB adapter on the USB-C port (EthernetUsb.h),
+    // V4 builds only: off unless turned on. Applied at boot, when the port
+    // becomes the adapter's host if no computer is on it.
+    bool     eth_enabled;
     char     node_name[33];   // Human-readable name (empty = auto from node hash)
 
     // Airtime / duty-cycle limits, in fraction (0.0 = disabled, 0.01 = 1%).
@@ -187,6 +192,8 @@ struct FirewallState {
     bool     ap_tcp_connected;    // Local TCP server (LAN) has client
     bool     ble_running;         // Bluetooth up this boot (on, and PSRAM to run in)
     uint8_t  ble_peers;           // Bluetooth peers connected (runtime, for the display)
+    bool     eth_running;         // the USB port is the Ethernet adapter's host this boot
+    bool     eth_up;              // the cable is up with an address (runtime, for the display)
     bool     ap_active;
     uint32_t packets_bridged_lora_to_tcp;
     uint32_t packets_bridged_tcp_to_lora;
@@ -314,6 +321,7 @@ inline void firewall_load_config() {
         firewall_state.advert_jitter = false;
         firewall_state.advert_publish_ifac = false;
         firewall_state.ble_enabled = true;
+        firewall_state.eth_enabled = false;
         firewall_state.node_name[0] = '\0';
         firewall_state.st_airtime_limit = 0.0f;
         firewall_state.lt_airtime_limit = 0.0f;
@@ -481,6 +489,9 @@ inline void firewall_load_config() {
 
     firewall_state.ble_enabled = firewall_ble_enabled_in_eeprom();
 
+    // Ethernet through a USB adapter: off unless turned on (0xFF = unset = off)
+    firewall_state.eth_enabled = (EEPROM.read(config_addr(ADDR_CONF_ETH_EN)) == FIREWALL_ENABLE_BYTE);
+
     // Reset runtime state
     firewall_state.packets_bridged_lora_to_tcp = 0;
     firewall_state.packets_bridged_tcp_to_lora = 0;
@@ -490,6 +501,8 @@ inline void firewall_load_config() {
         firewall_state.backbones[i].connected = false;
     }
     firewall_state.ap_active = false;
+    firewall_state.eth_running = false;
+    firewall_state.eth_up = false;
 }
 
 inline void firewall_save_config() {
@@ -590,6 +603,10 @@ inline void firewall_save_config() {
     // Bluetooth peers
     EEPROM.write(config_addr(ADDR_CONF_BLE_EN),
                  firewall_state.ble_enabled ? FIREWALL_ENABLE_BYTE : 0x00);
+
+    // Ethernet through a USB adapter
+    EEPROM.write(config_addr(ADDR_CONF_ETH_EN),
+                 firewall_state.eth_enabled ? FIREWALL_ENABLE_BYTE : 0x00);
 
     EEPROM.write(config_addr(ADDR_CONF_APP_MARKER0), FIREWALL_APP_MARKER0);
     EEPROM.write(config_addr(ADDR_CONF_APP_MARKER1), FIREWALL_APP_MARKER1);

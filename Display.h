@@ -778,7 +778,7 @@ void draw_stat_area() {
   if (device_init_done) {
 #ifdef FIREWALL_MODE
     // ── Firewall Mode: status indicators + battery ──
-    //  LORA and BLE / WIFI / WAN (backbone) / LAN (local TCP)
+    //  LORA and BLE / WIFI and ETH / WAN (backbone) / LAN (local TCP)
     stat_area.fillRect(0, 0, 64, 64, SSD1306_BLACK);
     stat_area.setFont(SMALL_FONT);
     stat_area.setTextColor(SSD1306_WHITE);
@@ -815,6 +815,18 @@ void draw_stat_area() {
       stat_area.setCursor(10, 16);
       stat_area.print("wifi");
     }
+
+#ifdef RTNODE_ETH_USB
+    // Row 2, second column — ETH, under BLE: filled with a wired address,
+    // hollow while the port is the adapter's host without one, hidden when
+    // Ethernet is off or the port stayed USB serial this boot
+    if (firewall_state.eth_running) {
+      stat_area.fillCircle(40, 14, 3, firewall_state.eth_up ? SSD1306_WHITE : SSD1306_BLACK);
+      stat_area.drawCircle(40, 14, 3, SSD1306_WHITE);
+      stat_area.setCursor(46, 16);
+      stat_area.print(firewall_state.eth_up ? "ETH" : "eth");
+    }
+#endif
 
     // Row 3 — WAN / backbone TCP
     size_t wan_enabled = firewall_backbone_enabled_count();
