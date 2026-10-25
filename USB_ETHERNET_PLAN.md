@@ -189,7 +189,6 @@ Use it where WiFi alone is checked now:
 | `RNode_Firmware.ino:3259` | mDNS late start |
 | `TcpInterface.h:205` | a backbone reconnects only if `WiFi.status() == WL_CONNECTED` |
 | `MdnsService.h:59` | `start_sta()` refuses without WiFi |
-| `Display.h:554`, `draw_cable_icon()` | the status icon shows WiFi only |
 
 The TCP interfaces are created only when WiFi is enabled
 (`RNode_Firmware.ino:1128`, the backbones and the local server). Create them when WiFi or Ethernet is
@@ -227,8 +226,42 @@ move to WiFi (if on), and it comes back on its own when the cable returns.
   `ADDR_CONF_BLE_EN` (0x23E). 0x73 = on; 0x00 or 0xFF = off.
 - Saving already restarts the node (`FirewallConfig.h:951-955`), so the port
   role is decided fresh.
-- The status page and display: wired link up/down, address, adapter
+- The portal's status page: wired link up or down, address, adapter
   (vendor:product), frames and drops.
+
+### 6. ETH indicator on the display
+
+James, 2026-10-25: an ETH indicator under the BLE indicator.
+
+The status area (`Display.h`, `draw_stat_area()`, line 777) is 64×64 pixels.
+Row 1 has LORA at the left and BLE in a second column (circle at x 40, text
+at x 46, line 793). Row 2 has only WIFI (line 803), so ETH goes in the
+second column of row 2, directly under BLE, drawn the same way:
+
+```
+ o LORA   o BLE        row 1, y 4
+ o WIFI   o ETH        row 2, y 14   (circle 40,14 r3; text at 46,16)
+ o WAN:1/1             row 3
+ o LAN                 row 4
+```
+
+- **Filled circle, "ETH":** the cable is up and the wired interface has an
+  address.
+- **Hollow circle, "eth":** Ethernet is running this boot, but there's no
+  wired link with an address yet: no adapter, no cable, or waiting for DHCP.
+- **Hidden:** Ethernet is off in the portal, or it can't run this boot
+  because a computer was on the USB port at start-up and the port stayed USB
+  serial. The same rule as BLE (hidden when off or unable to run) and LAN.
+
+It fits: in the display's small font (Org_01), "WIFI" ends at x 26 and
+"ETH" is as wide as "BLE" above it.
+
+Two fields in `firewall_state`, next to `ble_running` and `ble_peers`
+(`FirewallMode.h:188`): `eth_running` (the port became the adapter's port
+this boot) and `eth_up` (link up with an address), set by `EthernetUsb.h`.
+
+Only the V4 builds draw it (`RTNODE_ETH_USB`), as only they draw BLE
+(`RTNODE_BLE`).
 - `boundary_needs_config()` (`FirewallConfig.h:965`) needs no change: after
   the first save the firewall flag is set, so an Ethernet-only node with no
   SSID isn't sent back to the portal.
@@ -300,6 +333,10 @@ Each fix gets a test that fails before it and passes after.
     carries on.
 12. Cable only, WiFi off: backbones and LAN clients over the cable; the
     watchdog never fires.
+13. The ETH indicator: hidden with Ethernet off, and with a computer on the
+    port at boot; hollow with no adapter, then with no cable; filled once
+    DHCP gives an address; hollow again within a second or two of pulling
+    the cable.
 
 **Contract suites** (CONTRACT_TESTS.md): lan, wan and soak over the cable,
 WiFi off. Then with WiFi on as well.
@@ -311,8 +348,9 @@ UART header.
 ## Order of work and effort
 
 1. Library in, with the two new fixes and its settings: 1–2 days.
-2. Port role at boot, `network_is_up()`, watchdog, portal: 1–2 days.
-3. Bench tests 1–12 on the dock: 1 day.
+2. Port role at boot, `network_is_up()`, watchdog, portal, ETH indicator:
+   1–2 days.
+3. Bench tests 1–13 on the dock: 1 day.
 4. Contract suites and the staging soak: 1–2 days, mostly waiting.
 
 About a week. Nothing here needs the RNode or Reticulum code changed.
