@@ -309,3 +309,8 @@ the temperature on every loop pass (~1,270 a second) did not reproduce it in
 | 2026-10-24 | bb4794b (main with the announce cap rework and the temperature fix), V4.2 bench build | announce cap | **5/5** | announces 90.4, 89.4, 90.4 s apart; LAN path requests out in ~1 s; the backbone's held and searched for; backbone heard 5/5 |
 | 2026-10-24 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 201 ms, LAN–WAN p50 414 ms; no reboot or panic, heap min 124 KB |
 | 2026-10-24 | same | lan tcp,tcp2,tcp3 | **24/24** | |
+| 2026-10-25 | cc79780 (branch `behaviour-rewrite`: Reticulum behaviour rewritten from RETICULUM_BEHAVIOUR.md), V4.2 bench build, WiFi on | announce cap | **5/5** | announces 89.3, 90.3, 90.4 s apart; LAN path requests out in 0.1–0.2 s; the backbone's held and searched for; backbone heard 5/5 |
+| 2026-10-25 | same | wan tcp,tcp2 | **18/18** | flood: 1201 announces, 0 leaked, LAN–LAN echo p50 200 ms, LAN–WAN p50 507 ms; no reboot or panic, heap min 125 KB, stall max 289 ms; ingress control held per client slot, stopped at 256 and logged its drops |
+| 2026-10-25 | same | lan tcp,tcp2,tcp3 | **24/24** | |
+| 2026-10-25 | same | path response (`bench_path_response.py`) | **PASS** | answered from the cache in 1.19 s |
+| 2026-10-25 | same | ingress release (`bench_ingress_release.py`) | **PASS** | burst logged 0.6 s in, over 21.5 s after the flood stopped, 256 held; nothing leaked; releases 0.8, 5.2, 5.2 s apart, oldest first |
