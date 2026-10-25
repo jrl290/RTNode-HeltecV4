@@ -20,8 +20,8 @@
 	#define CONFIG_H
 
 	#define MAJ_VERS  0x01
-	#define MIN_VERS  0x34	// the release's last number: the version page shows MAJ.MIN
-	#define FW_RELEASE_TAG "1.0.52"
+	#define MIN_VERS  0x35	// the release's last number: the version page shows MAJ.MIN
+	#define FW_RELEASE_TAG "1.0.53"
 
 	#define MODE_HOST 0x11
 	#define MODE_TNC  0x12

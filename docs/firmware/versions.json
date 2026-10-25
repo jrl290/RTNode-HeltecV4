@@ -1,5 +1,20 @@
 [
   {
+    "tag": "v1.0.53",
+    "name": "v1.0.53 \u2014 Fix for reboots with WiFi or Bluetooth on, LoRa announce cap",
+    "stability": "beta",
+    "prerelease": false,
+    "published_at": "2026-10-25T00:00:00Z",
+    "assets": [
+      "rtnode_heltec_v3.bin",
+      "rtnode_heltec_v3_merged.bin",
+      "rtnode_heltec_v4.bin",
+      "rtnode_heltec_v4_merged.bin",
+      "rtnode_heltec_v4_r8.bin",
+      "rtnode_heltec_v4_r8_merged.bin"
+    ]
+  },
+  {
     "tag": "v1.0.52",
     "name": "v1.0.52 \u2014 V4 R8 radio fix and R8 detected by the flashers, faster Bluetooth links, WiFi off means off",
     "stability": "beta",
