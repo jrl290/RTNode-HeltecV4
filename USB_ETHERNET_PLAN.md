@@ -12,10 +12,12 @@ merged. That branch barely touches the files below (it changes how
 ## What it adds
 
 On the Heltec V4 and V4 R8, the USB-C port can take a USB Ethernet adapter
-instead of a computer. The node then reaches the backbones, and its LAN
-clients reach it, over a cable instead of WiFi. LoRa, Bluetooth and the
-firewall are unchanged: the wired link is just another way into the IP
-network that `TcpInterface` already uses.
+instead of a computer. The cable then works the way WiFi does today, with
+both sides on it: the backbone side (the node's connections out to its TCP
+backbones) and the LAN side (local clients connecting to its TCP server).
+WiFi can stay on alongside it. LoRa, Bluetooth and the firewall are
+unchanged: the cable is another way into the IP network that `TcpInterface`
+already uses.
 
 One adapter protocol only: **CDC-ECM**, the USB standard for Ethernet. It
 covers Realtek's RTL8152/8153/8156 and ASIX's AX88179A, which between them
@@ -58,34 +60,43 @@ The adapter has to bring its own power, one of two ways:
 
 1. An adapter or dock with a charging port. The charger powers the adapter,
    and the adapter passes power on to the board through the same cable
-   (James's dock does this). This is what to recommend.
+   (James's dock does this). This is the setup the README describes.
 2. A plain adapter, with 5 V fed into the board's header (JP4 pin 2, which is
    wired to the USB-C 5 V line). Powers both. For people who build their own.
 
 With option 1, unplugging the charger powers the board off unless it has a
 battery.
 
-## Decisions for James
+## Decided (James, 2026-10-25)
 
-1. **Off by default.** Recommended: a portal setting, off by default, so
-   nothing changes for anyone who doesn't turn it on. With it on, the board
-   checks at each boot whether a computer is on the USB port. If one is, the
-   port stays USB serial for that boot, as today. If not, after a few seconds
-   it becomes the adapter's port until the next restart. So to flash or use
-   USB serial again, plug in the computer and press reset. The board can't
-   notice a computer plugged in later, because two USB hosts can't see each
-   other.
-2. **WiFi alongside, or instead?** Recommended: alongside. Both can be on.
-   New connections prefer the cable when it's up, and fall back to WiFi when
-   it's unplugged. The other choice is cable-only when Ethernet is on: simpler
-   to explain, but a pulled cable cuts the node off.
-3. **Which adapters to promise.** Recommended: publish a short list of
-   adapters actually tested, rather than "any ECM adapter". To start it, buy
-   one RTL8153 adapter with a charging port (the most common chip) and, if
-   possible, one RTL8156 (2.5 Gbit). The AX88179A dock is already tested.
-4. **How to release it.** Recommended: in the next release after v1.0.53,
-   marked experimental in the README and portal until the tested list has the
-   Realtek adapter on it and a week of use behind it.
+1. **Off by default, switched on in the captive portal's WiFi settings.**
+   With it on, the board checks at each boot whether a computer is on the USB
+   port. If one is, the port stays USB serial for that boot, as today. If
+   not, after a few seconds it becomes the adapter's port until the next
+   restart. So to flash or use USB serial again, plug in the computer and
+   press reset. The board can't notice a computer plugged in later, because
+   two USB hosts can't see each other.
+2. **WiFi and the cable together, and the cable follows WiFi's pattern.**
+   WiFi carries both sides today: the backbones and the LAN clients. The
+   cable carries both sides the same way, from the same settings:
+   - The backbone slots and the local TCP server are not duplicated. They
+     work over whichever network is up, or both.
+   - Backbone connections go out over the cable when it's up and over WiFi
+     when it isn't. A pulled cable moves them to WiFi; its return moves new
+     connections back.
+   - The local TCP server already listens on every address
+     (`TcpInterface.h:149`, `WiFiServer` with no address), so LAN clients
+     reach it over WiFi and over the cable at the same time. Replies leave by
+     the network the client came in on: the proof of concept showed that,
+     with traffic to the WiFi address staying on WiFi while the cable was up.
+   - mDNS announces the node on both networks (see Unknowns).
+   - The firewall's sides are Reticulum interfaces (local server = LAN,
+     backbones = WAN), whichever network carries them, so a LAN client on the
+     cable is LAN and a backbone on the cable is WAN, exactly as on WiFi.
+3. **Experimental, promising nothing.** It goes out marked experimental in the
+   README and the portal, with no list of supported adapters. The README says
+   which adapter it was tested with, that it needs an ECM adapter that brings
+   its own power, and that other adapters may or may not work.
 
 ## Firmware changes
 
@@ -194,15 +205,24 @@ radio carries them. `CORE_PRINCIPLES.md` applies as it is.
 The watchdog restarts the node after 15 s without WiFi
 (`RNode_Firmware.ino:3082-3117`). While the wired link is up, a WiFi loss
 must not restart it: the backbones are on the cable and a restart would drop
-them. The watchdog acts only when WiFi is the node's only network. A pulled
+them. The watchdog acts only when WiFi is the node's only network. WiFi keeps
+trying to rejoin every 10 s, as it does today (`Remote.h`,
+`wifi_update_status()`). The cost: if WiFi's driver ever stays stuck while
+the cable is up, WiFi's LAN clients wait until the cable goes down or the
+node restarts. The bench soak shows whether that happens. A pulled
 cable doesn't restart anything: the wired interface goes down, connections
 move to WiFi (if on), and it comes back on its own when the cable returns.
 
 ### 5. Portal, status and display
 
-- `FirewallConfig.h`: a "Wired Ethernet (USB adapter)" setting next to WiFi,
-  off by default. Its help text says the USB port then stops being a serial
-  port unless a computer is attached at boot.
+- `FirewallConfig.h`: in the "WiFi Network" section (line 269), under the
+  WiFi switch, an "Ethernet (USB adapter, experimental)" switch, off by
+  default. Its help text says the adapter must bring its own power, and that
+  the USB port stops being a serial port unless a computer is attached at
+  boot.
+- The WiFi switch's "Disabled (LoRa-only repeater)" wording (line 279) is
+  true only while Ethernet is off as well. Show plain "Disabled" when
+  Ethernet is on.
 - Saved at `ADDR_CONF_ETH_EN` = 0x23F, the first free byte after
   `ADDR_CONF_BLE_EN` (0x23E). 0x73 = on; 0x00 or 0xFF = off.
 - Saving already restarts the node (`FirewallConfig.h:951-955`), so the port
@@ -250,7 +270,7 @@ only when Ethernet is on.
 
 Each fix gets a test that fails before it and passes after.
 
-**Bench, V4.2 and R8, the dock and each new adapter:**
+**Bench, V4.2 and R8, on the dock (and any other ECM adapter at hand):**
 
 1. Boot with a computer attached: USB serial as today, Ethernet off or on.
 2. Boot from the adapter alone: wired address within 10 s; log on the UART
@@ -269,7 +289,14 @@ Each fix gets a test that fails before it and passes after.
 8. Unsupported adapter: a clear log line, no crash. WiFi carries on if on.
 9. Bluetooth peers connected while the wired link carries traffic: no BLE
    drops, budgets met.
-10. mDNS: the node answers `rtnode….local` over the cable.
+10. mDNS: the node answers `rtnode….local` over the cable and over WiFi.
+11. Both sides on both networks: WiFi and the cable on, backbone up over the
+    cable, one LAN client on WiFi and one on the cable. Both clients reach
+    the backbone; the firewall's whitelists fill the same way as for WiFi
+    clients; pulling the cable moves the backbone to WiFi and the WiFi client
+    carries on.
+12. Cable only, WiFi off: backbones and LAN clients over the cable; the
+    watchdog never fires.
 
 **Contract suites** (CONTRACT_TESTS.md): lan, wan and soak over the cable,
 WiFi off. Then with WiFi on as well.
@@ -282,12 +309,10 @@ UART header.
 
 1. Library in, with the two new fixes and its settings: 1–2 days.
 2. Port role at boot, `network_is_up()`, watchdog, portal: 1–2 days.
-3. Bench tests 1–10 on the dock: 1 day. On a Realtek adapter: half a day once
-   it arrives.
+3. Bench tests 1–12 on the dock: 1 day.
 4. Contract suites and the staging soak: 1–2 days, mostly waiting.
 
-About a week and a half, plus the wait for a Realtek adapter. Nothing here
-needs the RNode or Reticulum code changed.
+About a week. Nothing here needs the RNode or Reticulum code changed.
 
 ## Unknowns
 
@@ -296,7 +321,7 @@ needs the RNode or Reticulum code changed.
 - How Realtek adapters report link changes over ECM (the AX88179A's reports
   were seen only at first link-up).
 - Whether every adapter with a charging port passes power back to a board
-  that only takes power. James's dock does. Each adapter on the tested list
-  is checked for this.
+  that only takes power. James's dock does; others may not, which is one
+  reason it promises nothing.
 - Whether the dock's out-of-sequence hub report is the dock's quirk or the
   library's. The fix covers both. The fix could also be offered to CherryUSB.
