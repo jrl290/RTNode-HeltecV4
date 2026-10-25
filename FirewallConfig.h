@@ -300,7 +300,8 @@ static void config_send_html() {
     html += F("</select>");
     html += F("<p class='note'>Experimental. A USB Ethernet adapter that speaks CDC-ECM, on the USB-C "
               "port, carries the TCP backbones and the local TCP server below, as WiFi does, with WiFi "
-              "on or off. The board can't power the adapter: use a powered USB hub or a Y-cable. "
+              "on or off. The board can't power the adapter: use one with a charging port, which "
+              "powers both. "
               "While the adapter is in use, USB serial is off until the next restart (the log goes to "
               "the TX pin at 115200); with a computer on the USB port at power-up, the port stays USB "
               "serial. Takes effect after a restart.</p>");

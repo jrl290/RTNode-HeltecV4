@@ -226,8 +226,10 @@ move to WiFi (if on), and it comes back on its own when the cable returns.
   `ADDR_CONF_BLE_EN` (0x23E). 0x73 = on; 0x00 or 0xFF = off.
 - Saving already restarts the node (`FirewallConfig.h:951-955`), so the port
   role is decided fresh.
-- The portal's status page: wired link up or down, address, adapter
-  (vendor:product), frames and drops.
+- No portal status: the portal runs only in setup mode, which holds up
+  `setup()` before Ethernet starts. The wired link, address, adapter
+  (vendor:product) and drops go to the log instead (`[ETH]` lines), and the
+  display shows the ETH indicator.
 
 ### 6. ETH indicator on the display
 
