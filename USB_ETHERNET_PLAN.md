@@ -241,15 +241,18 @@ from the proof of concept's build of the library subset:
 | | Cost | Note |
 |---|---|---|
 | Flash | about 37 KB | V4 app slots are 6.25 MB |
-| Static internal RAM | about 21 KB (16 KB zeroed, 5 KB initialised) | taken even with Ethernet off; measure against the 25 % static budget |
+| Static internal RAM | about 21 KB as the library ships (16 KB zeroed, 5 KB initialised) | over budget as is; allocated at start only when Ethernet is on (below) |
 | Task stacks | about 6 KB internal, only with Ethernet on | hub task 4 KB, receive task 2 KB |
 | Frames | lwIP buffers per frame, as for WiFi | bounded by lwIP's pools |
 | CPU | core 0, only while traffic flows | about 4.5 Mbit/s at most |
 
-Check against the budgets (min free internal heap ≥ 48 KB, largest block
-≥ 24 KB, loop p99 ≤ 5 ms) with Ethernet off and on. If the 21 KB taken with
-Ethernet off costs too much, allocate the library's larger buffers at start,
-only when Ethernet is on.
+Static RAM is already at its budget: the V4 bench build of main uses 25.2 %
+(82,412 of 327,680 bytes) against PERFORMANCE_STRATEGY's 25 %. So the
+library's static buffers can't simply be added. Its larger buffers (the
+frame buffers, the hub and class tables) are allocated at start, only when
+Ethernet is on, which leaves the static cost with Ethernet off near zero.
+Then check the other budgets (min free internal heap ≥ 48 KB, largest block
+≥ 24 KB, loop p99 ≤ 5 ms) with Ethernet off and on.
 
 ## How it fits the design principles
 
