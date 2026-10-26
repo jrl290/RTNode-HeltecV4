@@ -349,22 +349,84 @@ UART header.
 
 ### Bench results so far (V4.2, 2026-10-25/26)
 
-The firmware was the bench build of this branch at 3fc4bfa. It had WiFi and
-Ethernet turned on in RAM, the local TCP server on 4242, and backbone 1 to
-the stand-in backbone on the M1 (192.168.2.117:4290).
+The firmware was a bench build of this branch: 3fc4bfa on 10-25, 9f032ec on
+10-26. Bench builds turn WiFi and Ethernet on in RAM, run the local TCP
+server on 4242, and point backbone 1 at the stand-in backbone on the M1
+(192.168.2.117:4290).
+
+From 9f032ec, bench builds also carry a **network log**, for testing only. It
+stands in for a serial adapter on the TX pin. TCP port 4243 sends the log
+(a 16 KB backlog, then live lines). It takes two commands: `restart`, and
+`restart nowifi`, which turns WiFi off for the next boot only. Release
+builds don't have it.
+
+**A WiFi bug the bench build exposed, fixed in 929d215.**
+- With the network log added, the node still connected out over WiFi, but
+  nothing could reach it there: no ping, no local server.
+- The cause is two libraries using one name, `INADDR_NONE`, for different
+  things.
+  - In Arduino it means "no address", which asks for DHCP.
+  - In the network stack it means 255.255.255.255.
+  - The network log's headers put the network stack's meaning first. So the
+    node's WiFi setup asked for 255.255.255.255 as its own fixed address,
+    gateway and netmask.
+- `Remote.h` now asks for "no address" directly.
+- Release builds weren't affected, because their headers come in the other
+  order. But any future include could set the same trap, so the fix belongs
+  on main too.
 
 - **Test 1, a computer on the port.** With the M5 on the port at boot, the
   log said Ethernet was on but a computer was on the port, so it stayed USB
   serial. USB serial kept working, and the backbone came up over WiFi. Pass.
-- **Test 2, booting from the adapter (in part).**
+- **Test 2, booting from the adapter.** Pass.
   - On James's ASIX dock, the node took a wired address, 192.168.2.137
     (adapter MAC 20:7b:d2:6e:85:b0), next to its WiFi address,
     192.168.2.135. The display showed ETH filled.
-  - The 10-second target and the UART log weren't checked, because no
-    serial adapter was on the TX pin.
+  - The wired address came 5.7 s after the port became a USB host. The port
+    switches about 5.6 s into the boot, so the address arrives 11–12 s after
+    a restart.
   - A different USB hub gave no wired address. The node kept running on
-    WiFi. Which adapter that hub has, and what the log said, aren't known
-    yet.
+    WiFi. Which adapter that hub has, and what the log says, are still to
+    be found (test 8).
+- **Test 3, restarting 10 times.** Pass for the link.
+  - The network log's `restart` command restarted the node 10 times in a
+    row.
+  - Each time, the wired address came back 12–14 s after the command, and
+    the backbone 12–13 s after it.
+  - There were no USB or hub errors. The only error line is on every boot:
+    the library has no separate driver for the adapter's data interface
+    (USB class 0x0a). That's expected, because the Ethernet driver runs it
+    through the adapter's control interface.
+  - In three of the ten rounds, one of three probes sent in the first
+    seconds after the boot was lost. Six probes once the node settled lost
+    none.
+  - A restart from a portal save wasn't tried.
+- **Test 10, mDNS.** Pass. `rtnode6580.local` answers with both addresses,
+  .137 and .135, and advertises `_reticulum._tcp` on 4242. The log calls it
+  "STA up" when only the cable is up, which is only a wording issue.
+- **Test 12, the cable only, WiFi off.** Pass.
+  - The node booted with WiFi off, by `restart nowifi`.
+  - It had a wired address at 10.5 s. The backbone connected from .137, and
+    the local server answered on .137, not on .135.
+  - The watchdog never fired.
+- **Contract suites, the cable only, WiFi off.** All pass.
+  - lan: 24 of 24 (57 s).
+  - wan: 18 of 18 (231 s). The flood test leaked nothing.
+  - soak: 2 of 2 (917 s). 450 of 450 echoes and 7 of 7 resources arrived,
+    with no restarts and no panics.
+- **Contract suites over the cable, WiFi on as well.** All pass, with the
+  same counts as above.
+  - lan: 24 of 24 (56 s).
+  - wan: 18 of 18 (234 s). The flood test leaked nothing.
+  - soak: 2 of 2 (917 s). 450 of 450 echoes and 7 of 7 resources, with no
+    restarts and no panics. Echo round trips were 55 ms median and 149 ms
+    at the 95th percentile.
+  - The backbone first connected over WiFi, which was up before the cable
+    had its address. It reconnected two minutes later, from the cable.
+- **Test 11, both networks (in part).** With WiFi and the cable both up, two
+  clients probed the node at the same time, one through .135 and one
+  through .137. Each got 10 replies out of 10. The cable-pull half of this
+  test waits for hands at the dock.
 - **Local TCP server over the cable.** rnprobe from the M1 to the node's
   probe destination, through 192.168.2.137:4242, got 5 replies out of 5 at
   about 99 ms. Over WiFi it also got 5 out of 5, at 105–232 ms. Ping
@@ -376,8 +438,21 @@ the stand-in backbone on the M1 (192.168.2.117:4290).
   read timeout, and that connection came from the wired address. So new
   connections prefer the cable.
 
-Not yet run: tests 3–13, the contract suites and the staging soak. Most of
-them need the serial log on the TX pin, or hands on the cable and adapter.
+Not yet run:
+- **Need hands at the dock.**
+  - Tests 4, 11 and 13: pull the cable for 30 s.
+  - Test 8: the other hub.
+  - Test 7: Ethernet off in the portal.
+- **Need a battery on the board.** Tests 5 and 6.
+- **Needs a Bluetooth peer.** Test 9.
+- **The staging soak.**
+
+What test 4 should expect:
+- Nothing moves a backbone back to the cable when the cable returns. A
+  backbone that moved to WiFi stays there until its connection drops for
+  some other reason.
+- A backbone that was on the cable moves to WiFi only once its connection
+  notices the cable is gone. Test 4 measures how long that takes.
 
 ## Order of work and effort
 
