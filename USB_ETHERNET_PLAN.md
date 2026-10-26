@@ -347,6 +347,38 @@ WiFi off. Then with WiFi on as well.
 the cable to the staging RPi, and a day-long soak with the serial log on the
 UART header.
 
+### Bench results so far (V4.2, 2026-10-25/26)
+
+The firmware was the bench build of this branch at 3fc4bfa. It had WiFi and
+Ethernet turned on in RAM, the local TCP server on 4242, and backbone 1 to
+the stand-in backbone on the M1 (192.168.2.117:4290).
+
+- **Test 1, a computer on the port.** With the M5 on the port at boot, the
+  log said Ethernet was on but a computer was on the port, so it stayed USB
+  serial. USB serial kept working, and the backbone came up over WiFi. Pass.
+- **Test 2, booting from the adapter (in part).**
+  - On James's ASIX dock, the node took a wired address, 192.168.2.137
+    (adapter MAC 20:7b:d2:6e:85:b0), next to its WiFi address,
+    192.168.2.135. The display showed ETH filled.
+  - The 10-second target and the UART log weren't checked, because no
+    serial adapter was on the TX pin.
+  - A different USB hub gave no wired address. The node kept running on
+    WiFi. Which adapter that hub has, and what the log said, aren't known
+    yet.
+- **Local TCP server over the cable.** rnprobe from the M1 to the node's
+  probe destination, through 192.168.2.137:4242, got 5 replies out of 5 at
+  about 99 ms. Over WiFi it also got 5 out of 5, at 105–232 ms. Ping
+  averaged 41 ms over the cable and 113 ms over WiFi; the M1 itself is on
+  WiFi.
+- **Backbone over the cable.** At boot the backbone connected from the WiFi
+  address, because WiFi was up before DHCP finished on the cable. It
+  reconnected about two minutes later, when the silent stand-in hit the
+  read timeout, and that connection came from the wired address. So new
+  connections prefer the cable.
+
+Not yet run: tests 3–13, the contract suites and the staging soak. Most of
+them need the serial log on the TX pin, or hands on the cable and adapter.
+
 ## Order of work and effort
 
 1. Library in, with the two new fixes and its settings: 1–2 days.
