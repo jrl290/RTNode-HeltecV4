@@ -81,8 +81,11 @@ void wifi_remote_start_sta() {
 #ifdef FIREWALL_MODE
   // Firewall mode does not expose static STA addressing in its config flow.
   // Always return the station interface to DHCP so stale legacy EEPROM data
-  // cannot pin the node to an unintended address.
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  // cannot pin the node to an unintended address. IPAddress() is 0.0.0.0,
+  // which means DHCP. Not INADDR_NONE: once any lwIP header comes before this
+  // file, that name is lwIP's macro for 255.255.255.255, and the node takes
+  // the broadcast address as a static address, gateway and netmask.
+  WiFi.config(IPAddress(), IPAddress(), IPAddress());
 #else
 
   uint8_t ip[4]; bool ip_ok = true;
