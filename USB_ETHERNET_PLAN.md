@@ -423,10 +423,31 @@ builds don't have it.
     at the 95th percentile.
   - The backbone first connected over WiFi, which was up before the cable
     had its address. It reconnected two minutes later, from the cable.
-- **Test 11, both networks (in part).** With WiFi and the cable both up, two
-  clients probed the node at the same time, one through .135 and one
-  through .137. Each got 10 replies out of 10. The cable-pull half of this
-  test waits for hands at the dock.
+- **Test 11, both networks.** Pass.
+  - With WiFi and the cable both up, two clients probed the node at the same
+    time, one through .135 and one through .137. Each got 10 replies out of
+    10.
+  - The cable pull below covers the rest.
+- **Tests 4, 11 and 13, pulling the cable (10-26 18:01).** Pass.
+  - Before the pull, the backbone was connected from the cable (.137). A
+    client on WiFi probed the node every 2 s throughout.
+  - At the pull, the log said "Wired link down" and "wired address lost". One
+    frame being sent was dropped.
+  - The node closed the backbone's connection, and 50 ms later the
+    backbone was connected again, from WiFi.
+  - The cable was out for 52 s. When it went back in, the node had its wired
+    address in the same second, the same lease as before. The local server
+    answered on .137 again.
+  - The backbone stayed on WiFi, as expected: nothing moves it back.
+  - Nothing restarted (uptime carried on), and the watchdog never fired.
+  - The WiFi client never noticed. It got 90 replies to 90 probes across
+    the pull, with round trips of 102–608 ms (median 194 ms).
+  - James watched ETH go hollow at the pull and fill again once the cable
+    was back.
+- **Test 8, the other hub.** Not a firmware matter. James's MacBook doesn't
+  see that hub's Ethernet either, so its chip most likely speaks only its
+  maker's own protocol, not CDC-ECM. That's what the plan says to expect
+  for such adapters.
 - **Local TCP server over the cable.** rnprobe from the M1 to the node's
   probe destination, through 192.168.2.137:4242, got 5 replies out of 5 at
   about 99 ms. Over WiFi it also got 5 out of 5, at 105–232 ms. Ping
@@ -439,20 +460,15 @@ builds don't have it.
   connections prefer the cable.
 
 Not yet run:
-- **Need hands at the dock.**
-  - Tests 4, 11 and 13: pull the cable for 30 s.
-  - Test 8: the other hub.
-  - Test 7: Ethernet off in the portal.
-- **Need a battery on the board.** Tests 5 and 6.
-- **Needs a Bluetooth peer.** Test 9.
+- **Test 7:** Ethernet off in the portal. Needs hands at the dock.
+- **Tests 5 and 6:** need a battery on the board.
+- **Test 9:** needs a Bluetooth peer.
 - **The staging soak.**
 
-What test 4 should expect:
-- Nothing moves a backbone back to the cable when the cable returns. A
-  backbone that moved to WiFi stays there until its connection drops for
-  some other reason.
-- A backbone that was on the cable moves to WiFi only once its connection
-  notices the cable is gone. Test 4 measures how long that takes.
+Nothing moves a backbone back to the cable when the cable returns. A
+backbone that moved to WiFi stays there until its connection drops for some
+other reason. The first line of test 4 ("move to WiFi and back") should be
+read that way.
 
 ## Order of work and effort
 
