@@ -150,7 +150,7 @@ public:
             _server = new WiFiServer(_port, TCP_IF_MAX_CLIENTS);
             _server->begin();
             _server->setNoDelay(true);
-            Serial.printf("[TcpIF] Server listening on port %d\r\n", _port);
+            ethernet_usb::logf("[TcpIF] Server listening on port %d\r\n", _port);
             _started = true;
         } else {
             // Client mode — try initial connection
@@ -368,9 +368,9 @@ private:
         _num_clients--;
 
         uint32_t heap_after = ESP.getFreeHeap();
-        Serial.printf("[TcpIF] Client %d %s (heap: %u -> %u, delta: %+d)\r\n",
-                      idx, reason, heap_before, heap_after,
-                      (int)(heap_after - heap_before));
+        ethernet_usb::logf("[TcpIF] Client %d %s (heap: %u -> %u, delta: %+d)\r\n",
+                           idx, reason, heap_before, heap_after,
+                           (int)(heap_after - heap_before));
     }
 
     // Ingress control: Python spawns an interface per accepted TCP client, each
@@ -410,10 +410,10 @@ private:
         if (c.framing == TCP_FRAMING_AUTO) {
             if (byte == HDLC_FLAG) {
                 c.framing = TCP_FRAMING_HDLC;
-                Serial.printf("[TcpIF] Client %d framing: HDLC\r\n", idx);
+                ethernet_usb::logf("[TcpIF] Client %d framing: HDLC\r\n", idx);
             } else if (byte == KISS_FEND) {
                 c.framing = TCP_FRAMING_KISS;
-                Serial.printf("[TcpIF] Client %d framing: KISS\r\n", idx);
+                ethernet_usb::logf("[TcpIF] Client %d framing: KISS\r\n", idx);
             } else {
                 return;
             }
@@ -430,8 +430,8 @@ private:
                 if (c.in_frame && c.kiss_command == KISS_CMD_DATA && c.rxlen > 0 && !c.truncated) {
                     _deliver_frame(idx);
                 } else if (c.truncated) {
-                    Serial.printf("[TcpIF] DROPPED oversized KISS frame from client %d (>%d bytes)\r\n",
-                                  idx, TCP_IF_HW_MTU);
+                    ethernet_usb::logf("[TcpIF] DROPPED oversized KISS frame from client %d (>%d bytes)\r\n",
+                                       idx, TCP_IF_HW_MTU);
                 }
                 c.in_frame = true;
                 c.escape = false;
@@ -464,8 +464,8 @@ private:
                 // v1.0.12: If the frame exceeded the buffer, drop it entirely
                 // instead of delivering a truncated/corrupt packet to Transport.
                 if (c.truncated) {
-                    Serial.printf("[TcpIF] DROPPED oversized frame from client %d (>%d bytes, buffered %u)\r\n",
-                                  idx, TCP_IF_HW_MTU, c.rxlen);
+                    ethernet_usb::logf("[TcpIF] DROPPED oversized frame from client %d (>%d bytes, buffered %u)\r\n",
+                                       idx, TCP_IF_HW_MTU, c.rxlen);
                     c.truncated = false;
                     c.rxlen = 0;
                 } else {
@@ -534,13 +534,13 @@ private:
                 _clients[i].ingress = RNS::IngressState();
                 _clients[i].ingress.client = i;
                 _num_clients++;
-                Serial.printf("[TcpIF] Client %d connected from %s\r\n",
-                              i, _clients[i].client.remoteIP().toString().c_str());
+                ethernet_usb::logf("[TcpIF] Client %d connected from %s\r\n",
+                                   i, _clients[i].client.remoteIP().toString().c_str());
                 return;
             }
         }
         // No free slots — reject
-        Serial.println("[TcpIF] Max clients reached, rejecting connection");
+        ethernet_usb::log_line("[TcpIF] Max clients reached, rejecting connection");
         newClient.stop();
     }
 
@@ -548,7 +548,7 @@ private:
     void _connect_client() {
         res::Timed res_tcp(res::TCP);
         if (_target_host[0] == '\0') {
-            Serial.println("[TcpIF] No target host configured for client mode");
+            ethernet_usb::log_line("[TcpIF] No target host configured for client mode");
             return;
         }
 
@@ -559,24 +559,24 @@ private:
 
         // Try cached IP first (avoids DNS lookup on every reconnect)
         if (_resolved_ip != (uint32_t)0) {
-            Serial.printf("[TcpIF] Connecting to %s:%d (cached IP)...\r\n", _target_host, _target_port);
+            ethernet_usb::logf("[TcpIF] Connecting to %s:%d (cached IP)...\r\n", _target_host, _target_port);
             connected = client.connect(_resolved_ip, _target_port);
             if (!connected) {
                 // Cached IP failed — clear cache and try fresh DNS
                 _resolved_ip = (uint32_t)0;
-                Serial.println("[TcpIF] Cached IP failed, retrying with DNS");
+                ethernet_usb::log_line("[TcpIF] Cached IP failed, retrying with DNS");
             }
         }
 
         if (!connected) {
-            Serial.printf("[TcpIF] Connecting to %s:%d (DNS)...\r\n", _target_host, _target_port);
+            ethernet_usb::logf("[TcpIF] Connecting to %s:%d (DNS)...\r\n", _target_host, _target_port);
             IPAddress resolved;
             if (WiFi.hostByName(_target_host, resolved)) {
                 _resolved_ip = resolved;
-                Serial.printf("[TcpIF] Resolved %s -> %s\r\n", _target_host, resolved.toString().c_str());
+                ethernet_usb::logf("[TcpIF] Resolved %s -> %s\r\n", _target_host, resolved.toString().c_str());
                 connected = client.connect(resolved, _target_port);
             } else {
-                Serial.printf("[TcpIF] DNS failed for %s\r\n", _target_host);
+                ethernet_usb::logf("[TcpIF] DNS failed for %s\r\n", _target_host);
             }
         }
 
@@ -609,13 +609,13 @@ private:
             _num_clients = 1;
             _consecutive_failures = 0;
             _reconnect_interval = TCP_IF_RECONNECT_MIN;
-            Serial.printf("[TcpIF] Connected to backbone at %s:%d\r\n",
-                          _target_host, _target_port);
+            ethernet_usb::logf("[TcpIF] Connected to backbone at %s:%d\r\n",
+                               _target_host, _target_port);
         } else {
             _consecutive_failures++;
             if (_consecutive_failures >= TCP_IF_RECONNECT_GIVEUP) {
-                Serial.printf("[TcpIF] Giving up on %s:%d after %d failures\r\n",
-                              _target_host, _target_port, _consecutive_failures);
+                ethernet_usb::logf("[TcpIF] Giving up on %s:%d after %d failures\r\n",
+                                   _target_host, _target_port, _consecutive_failures);
                 _reconnect_interval = TCP_IF_RECONNECT_MAX + 1; // signal: don't retry
                 _last_reconnect = millis();
                 return;
@@ -625,9 +625,9 @@ private:
             if (_reconnect_interval > TCP_IF_RECONNECT_MAX) {
                 _reconnect_interval = TCP_IF_RECONNECT_MAX;
             }
-            Serial.printf("[TcpIF] Failed to connect to %s:%d (attempt %d, next retry in %ds)\r\n",
-                          _target_host, _target_port, _consecutive_failures,
-                          _reconnect_interval / 1000);
+            ethernet_usb::logf("[TcpIF] Failed to connect to %s:%d (attempt %d, next retry in %ds)\r\n",
+                               _target_host, _target_port, _consecutive_failures,
+                               _reconnect_interval / 1000);
         }
         _last_reconnect = millis();
     }

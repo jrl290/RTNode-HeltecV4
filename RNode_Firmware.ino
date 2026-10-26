@@ -1080,10 +1080,22 @@ void setup() {
       firewall_state.wifi_enabled = true;
       Serial.write("[BENCH] overrides: WiFi on (saved settings untouched)\r\n");
 #endif
+#ifdef RTNODE_ETH_USB
+      if (ethernet_usb::netlog::take_nowifi()) {
+        // The network log's "restart nowifi": cable-only tests, one boot.
+        firewall_state.wifi_enabled = false;
+        ethernet_usb::log_line("[BENCH] overrides: WiFi off for this boot (network log command)");
+      }
+#endif
 #if defined(RTNODE_BENCH_ETH_ON) && defined(RTNODE_ETH_USB)
       // Ethernet tests (USB_ETHERNET_PLAN.md) on a node whose portal has it off.
       firewall_state.eth_enabled = true;
       Serial.write("[BENCH] overrides: Ethernet on (saved settings untouched)\r\n");
+#endif
+#ifdef RTNODE_BENCH_MDNS_ON
+      // mDNS tests (over WiFi and the cable) on a node whose portal has it off.
+      firewall_state.mdns_enabled = true;
+      Serial.write("[BENCH] overrides: mDNS on (saved settings untouched)\r\n");
 #endif
 #ifdef RTNODE_BENCH_WAN_HOST
       // WAN contract tests (tests/bench_contracts.py wan): backbone 1 goes to
