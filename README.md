@@ -187,11 +187,11 @@ When active, the device creates a WiFi access point named **`RNode-Boundary-Setu
 
 The web form's sections include:
 
-#### 📶 WiFi Network
+#### 📶 IP Network
 | Field | Description |
 |-------|-------------|
-| **WiFi** | Enable/Disable (disable for LoRa-only repeater mode) |
 | **Ethernet (USB adapter, experimental)** | V4 only. Enable/Disable, **disabled by default**. A USB Ethernet adapter that speaks CDC-ECM, on the USB-C port, carries the TCP backbones and the local TCP server, as WiFi does, with WiFi on or off. The board can't power the adapter: use one with a charging port, which powers both (or feed 5 V into the header, JP4 pin 2). While the adapter is in use USB serial is off until the next restart, and the log goes to the TX pin (GPIO43, 115200 baud); with a computer on the USB port at power-up the port stays USB serial. Takes effect after a restart |
+| **WiFi** | Enable/Disable |
 | **SSID** | Your WiFi network name |
 | **Password** | WiFi password |
 

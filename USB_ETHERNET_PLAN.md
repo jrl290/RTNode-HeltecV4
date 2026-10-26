@@ -214,14 +214,14 @@ move to WiFi (if on), and it comes back on its own when the cable returns.
 
 ### 5. Portal, status and display
 
-- `FirewallConfig.h`: in the "WiFi Network" section (line 269), under the
-  WiFi switch, an "Ethernet (USB adapter, experimental)" switch, off by
-  default. Its help text says the adapter must bring its own power, and that
-  the USB port stops being a serial port unless a computer is attached at
-  boot.
-- The WiFi switch's "Disabled (LoRa-only repeater)" wording (line 279) is
-  true only while Ethernet is off as well. Show plain "Disabled" when
-  Ethernet is on.
+- `FirewallConfig.h`: the "WiFi Network" section becomes "IP Network"
+  (James, 10-26). Its first switch is "Ethernet (USB adapter,
+  experimental)", off by default, above the WiFi switch. Its short help
+  text says the adapter must be CDC-ECM and bring its own power, and that
+  USB serial is off while it's in use. The README keeps the full
+  description.
+- The WiFi switch says plain "Disabled", with no "LoRa-only repeater"
+  wording (James, 10-26).
 - Saved at `ADDR_CONF_ETH_EN` = 0x23F, the first free byte after
   `ADDR_CONF_BLE_EN` (0x23E). 0x73 = on; 0x00 or 0xFF = off.
 - Saving already restarts the node (`FirewallConfig.h:951-955`), so the port
