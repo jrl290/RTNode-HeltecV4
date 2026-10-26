@@ -460,8 +460,10 @@ builds don't have it.
   connections prefer the cable.
 
 Not yet run:
-- **Test 7:** Ethernet off in the portal. Needs hands at the dock.
-- **Tests 5 and 6:** need a battery on the board.
+- **Tests 5, 6 and 7:** need a battery on the board. Test 7 does too: the
+  board has to stay powered while it moves from the dock to a computer
+  after the portal's restart. Without a battery, the move cuts the power
+  and resets the port, which is the case test 1 already covers.
 - **Test 9:** needs a Bluetooth peer.
 - **The staging soak.**
 
