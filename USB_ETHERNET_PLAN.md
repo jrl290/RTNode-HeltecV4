@@ -459,13 +459,48 @@ builds don't have it.
   read timeout, and that connection came from the wired address. So new
   connections prefer the cable.
 
+**With a battery on the board (10-26, 19:10–19:43).** These ran on a test
+image with no Ethernet override, so Ethernet followed the portal's switch.
+- **The portal switch.** Pass. With Ethernet set to Enabled in the portal,
+  the node restarted as the adapter's host. With it set to Disabled, the
+  node restarted as USB serial. Until now every test had used the bench
+  build's override.
+- **Test 6, unplugging and replugging the adapter.** Pass.
+  - The dock was unplugged from the board at 19:26:25, with probes running
+    over the cable and over WiFi. The node dropped the adapter and its
+    hubs, logged "Wired link down", and had the backbone back over WiFi
+    96 ms later.
+  - The dock went back in after 88 s. The hubs and the adapter were found
+    again, the link came up 2.7 s after the driver started, and the wired
+    address came 7.4 s after the plug-in.
+  - A plug-in after a restart with nothing on the port (the node had been
+    up 91 s) gave the address 7.4 s after the plug-in as well.
+  - Earlier, a first plug-in after a portal restart still had no link 8 s
+    after the driver started, when James pressed reset. The adapter had
+    been without power for about ten minutes. It didn't happen again, so
+    it was most likely the adapter's cable link taking longer to come up.
+- **Test 5, the send ceiling (in part).** Unplugging the adapter during
+  traffic blocked nothing, and WiFi carried on. But no send was in flight
+  at that moment ("0 sending" dropped), so the ceiling itself, for an
+  adapter that stays attached but stops taking frames, wasn't exercised.
+  That would need a fault put in on purpose, in a bench build.
+- **Test 7, Ethernet off in the portal.** Pass. After the portal's
+  restart with Ethernet off, the board moved on its battery from the dock
+  to the M5 without restarting. The M5 saw it as USB serial (its USB
+  serial number is the board's MAC).
+- **Bluetooth was turned on in the portal.** The BLE indicator showed
+  hollow, with no peer.
+
 Not yet run:
-- **Tests 5, 6 and 7:** need a battery on the board. Test 7 does too: the
-  board has to stay powered while it moves from the dock to a computer
-  after the portal's restart. Without a battery, the move cuts the power
-  and resets the port, which is the case test 1 already covers.
-- **Test 9:** needs a Bluetooth peer.
-- **The staging soak.**
+- **Test 9, Bluetooth while the cable carries traffic.** The Pixel on the
+  M5 runs Retichat, which links to one RTNode in range, and it's already
+  linked to another RTNode near the M5, not to this one. This needs a peer
+  that can be pointed at this node, or the other node's Bluetooth off for
+  the test.
+- **The staging soak.** Running since 10-26 19:43 EDT for 24 hours, on the
+  dock, backbone to the staging Pi (192.168.2.107:4242), with WiFi and the
+  cable both up. The M1 records the network log and checks it every 10
+  minutes.
 
 Nothing moves a backbone back to the cable when the cable returns. A
 backbone that moved to WiFi stays there until its connection drops for some
