@@ -139,15 +139,15 @@ _destination_table.insert({destination_hash, new_destination_entry});
 
 ## 4. Memory Leaks — Unbounded Data Structures
 
-### Bug 4a — `_boundary_local_addresses`: no cap, no eviction (HIGH RISK)
+### Bug 4a — `_firewall_local_addresses`: no cap, no eviction (HIGH RISK)
 
 **File:** `Transport.cpp`
 
-The `_boundary_local_addresses` set accumulates every local device address seen via LoRa announces. There is no size cap and no eviction mechanism. On a long-running boundary node that sees many transient devices, this grows without bound.
+The `_firewall_local_addresses` set accumulates every local device address seen via LoRa announces. There is no size cap and no eviction mechanism. On a long-running RTNode that sees many transient devices, this grows without bound.
 
 **Impact:** Slow heap exhaustion over days/weeks of operation. Particularly problematic on ESP32 with limited RAM.
 
-**Fix needed:** Add a size cap (e.g. 200) with timestamp-based or LRU eviction, similar to how `_boundary_mentioned_addresses` is capped.
+**Fix needed:** Add a size cap (e.g. 200) with timestamp-based or LRU eviction, similar to how `_firewall_mentioned_addresses` is capped.
 
 ### Bug 4b — `_held_announces`: no cap, can orphan
 
@@ -177,14 +177,14 @@ The `_path_requests` map recorded timestamps of path requests but entries were n
 
 ## 5. Spurious Path Request Broadcasts
 
-### Bug 5a — Boundary Path A sends PATH REQUEST for every link data packet
+### Bug 5a — Firewall Path A sends PATH REQUEST for every link data packet
 
-**File:** `Transport.cpp`, boundary mode local→backbone forwarding  
+**File:** `Transport.cpp`, firewall mode local→backbone forwarding  
 **Code (before fix):**
 ```cpp
-// Boundary Path A: local device packet, no path in _destination_table
+// Firewall Path A: local device packet, no path in _destination_table
 else {
-    DEBUG("BOUNDARY: No path to " + packet.destination_hash().toHex() + " for local packet. Requesting path.");
+    DEBUG("FIREWALL: No path to " + packet.destination_hash().toHex() + " for local packet. Requesting path.");
     request_path(packet.destination_hash());
 }
 ```
@@ -197,7 +197,7 @@ For a resource transfer with 100 chunks, this sends 100 useless PATH REQUEST bro
 ```cpp
 else {
     if (_link_table.find(packet.destination_hash()) == _link_table.end()) {
-        DEBUG("BOUNDARY: No path to " + packet.destination_hash().toHex() + " for local packet. Requesting path.");
+        DEBUG("FIREWALL: No path to " + packet.destination_hash().toHex() + " for local packet. Requesting path.");
         request_path(packet.destination_hash());
     }
 }
@@ -287,8 +287,8 @@ the link transport forwarding block after direction is confirmed.
 
 **File:** `Transport.cpp`, all three LINKREQUEST forwarding paths:
 1. Standard transport forwarding (next-hop routing, ~line 1729)
-2. Boundary mode: local → backbone (~line 1875)
-3. Boundary mode: backbone → local (~line 1959)
+2. Firewall mode: local → backbone (~line 1875)
+3. Firewall mode: backbone → local (~line 1959)
 
 **Code (before fix):**
 ```cpp
@@ -310,7 +310,7 @@ if path_mtu:
         new_raw = new_raw[:-RNS.Link.LINK_MTU_SIZE] + clamped_mtu
 ```
 
-**Impact:** When both endpoints connect via TCP (HW_MTU=8192) through a V3 boundary node (HW_MTU=1064):
+**Impact:** When both endpoints connect via TCP (HW_MTU=8192) through a V3 RTNode (HW_MTU=1064):
 
 1. Sender's `LINKREQUEST` signals 8192-byte link MTU.
 2. V3 forwards the request **unchanged** to the receiver.
@@ -318,7 +318,7 @@ if path_mtu:
 4. V3's HDLC deframer buffer (`rxbuf[1064]`) **silently truncates** oversized segments.
 5. Only 4 of 6 truncated segments partially survive → receiver times out waiting for remaining parts → permanent stall at ~70%.
 
-**Symptom:** LXMF resource transfers through the V3 boundary node stall permanently at ~70% progress. The sender keeps retrying but never completes.
+**Symptom:** LXMF resource transfers through the V3 RTNode stall permanently at ~70% progress. The sender keeps retrying but never completes.
 
 ### Bug 8b — `TcpInterface` does not declare `FIXED_MTU`
 
@@ -419,5 +419,5 @@ cd test-harnesses/RTNode-HeltecV4
 bash run_test.sh
 ```
 
-Sends `test.pdf` (46.1 KB) as an LXMF attachment through the V3 boundary node. Pre-fix: stalls at 70%. Post-fix: delivers in ~3 seconds.
+Sends `test.pdf` (46.1 KB) as an LXMF attachment through the V3 RTNode. Pre-fix: stalls at 70%. Post-fix: delivers in ~3 seconds.
 

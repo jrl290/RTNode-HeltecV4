@@ -1231,14 +1231,14 @@ static uint32_t ingress_dropped = 0;
 										TRACE("Blocking announce broadcast on " + interface.toString() + " due to roaming-mode next-hop interface");
 										should_transmit = false;
 									}
-									else if (from_interface.mode() == Type::Interface::MODE_BOUNDARY) {
-										TRACE("Blocking announce broadcast on " + interface.toString() + " due to boundary-mode next-hop interface");
+									else if (from_interface.mode() == Type::Interface::MODE_BACKBONE) {
+										TRACE("Blocking announce broadcast on " + interface.toString() + " due to backbone-mode next-hop interface");
 										should_transmit = false;
 									}
 								}
 							}
 						}
-						else if (interface.mode() == Type::Interface::MODE_BOUNDARY) {
+						else if (interface.mode() == Type::Interface::MODE_BACKBONE) {
 							//local_destination = next((d for d in Transport.destinations if d.hash == packet.destination_hash), None)
 							// next and filter pattern?
 							// next(iterable, default)
@@ -1261,7 +1261,7 @@ static uint32_t ingress_dropped = 0;
 							auto iter = _destinations.find(packet.destination_hash());
 							if (iter != _destinations.end()) {
 #endif
-								TRACE("Allowing announce broadcast on boundary-mode interface from instance-local destination");
+								TRACE("Allowing announce broadcast on backbone-mode interface from instance-local destination");
 							}
 							else {
 								const Interface& from_interface = next_hop_interface(packet.destination_hash());
@@ -1822,10 +1822,10 @@ static uint32_t ingress_dropped = 0;
 
 		// Heap telemetry: snapshot after firewall filter (MUTED)
 		// {
-		// 	size_t _heap_after_boundary = OS::heap_available();
-		// 	int _boundary_delta = (int)_heap_after_boundary - (int)_heap_at_entry;
-		// 	if (_boundary_delta < -64) {
-		// 		VERBOSEF("[HEAP-TEL] firewall: %d bytes (bma=%u phl=%u)", _boundary_delta, _firewall_mentioned_addresses.size(), _packet_hashlist.size());
+		// 	size_t _heap_after_firewall = OS::heap_available();
+		// 	int _firewall_delta = (int)_heap_after_firewall - (int)_heap_at_entry;
+		// 	if (_firewall_delta < -64) {
+		// 		VERBOSEF("[HEAP-TEL] firewall: %d bytes (bma=%u phl=%u)", _firewall_delta, _firewall_mentioned_addresses.size(), _packet_hashlist.size());
 		// 	}
 		// }
 
@@ -2569,10 +2569,10 @@ static uint32_t ingress_dropped = 0;
 						}
 					}
 
-					// NOTE: The boundary-mode announce echo blocking that was here
+					// NOTE: The backbone-mode announce echo blocking that was here
 					// has been removed. The standard random_blob check above
 					// already prevents echoes (same blob = same announce bounced
-					// through backbone). Removing the boundary-specific blocking
+					// through backbone). Removing the backbone-mode blocking
 					// allows:
 					//  1. Local TCP clients to receive backbone announces for
 					//     destinations that also have LoRa paths.

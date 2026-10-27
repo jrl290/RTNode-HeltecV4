@@ -160,7 +160,7 @@ class TestRTNodeAlive:
         """
         Verify that the RTNode's active channel matches the test parameters.
 
-        The updated firmware emits ``[Boundary] LoRa: freq=... bw=... sf=...
+        The updated firmware emits ``[RTNode] LoRa: freq=... bw=... sf=...
         cr=... txp=...`` immediately after loading its EEPROM config.  If
         this line is present in the RTNode's recent log (i.e. the device
         booted while the test session was running), we parse it and compare
@@ -171,33 +171,33 @@ class TestRTNodeAlive:
         can capture the startup log.
         """
         # Look for the startup channel log in recently received lines
-        boundary_line: str | None = None
+        lora_line: str | None = None
         for line, _ts in rtnode.log_lines:
-            if "[Boundary] LoRa:" in line:
-                boundary_line = line
+            if "[RTNode] LoRa:" in line:
+                lora_line = line
                 break
 
-        if boundary_line is None:
+        if lora_line is None:
             # Also wait a short time in case we just connected mid-boot
-            boundary_line = rtnode.wait_for_log_line("[Boundary] LoRa:", timeout=3.0)
+            lora_line = rtnode.wait_for_log_line("[RTNode] LoRa:", timeout=3.0)
 
-        if boundary_line is None:
+        if lora_line is None:
             pytest.skip(
-                "RTNode did not emit '[Boundary] LoRa:' during this session.\n"
+                "RTNode did not emit '[RTNode] LoRa:' during this session.\n"
                 "  The device booted before the test run started.\n"
                 "  To verify channel: reset the RTNode, then re-run the tests."
             )
 
-        print(f"\n  RTNode startup channel line: {boundary_line.strip()!r}")
+        print(f"\n  RTNode startup channel line: {lora_line.strip()!r}")
 
-        # Parse: [Boundary] LoRa: freq=869525000 bw=250000 sf=8 cr=5 txp=14
+        # Parse: [RTNode] LoRa: freq=869525000 bw=250000 sf=8 cr=5 txp=14
         import re
         m = re.search(
             r"freq=(\d+)\s+bw=(\d+)\s+sf=(\d+)\s+cr=(\d+)\s+txp=(\d+)",
-            boundary_line,
+            lora_line,
         )
         assert m is not None, (
-            f"Could not parse channel values from: {boundary_line!r}\n"
+            f"Could not parse channel values from: {lora_line!r}\n"
             "  Expected format: freq=N bw=N sf=N cr=N txp=N"
         )
 
@@ -241,7 +241,7 @@ class TestLoRaReceive:
     that the RTNode received the packet over the air.
 
     Previous tests matched *any* log line which was a false positive
-    because the periodic ``[HEAP-TEL] boundary:`` telemetry fires every
+    because the periodic ``[HEAP-TEL] firewall:`` telemetry fires every
     ~2 s regardless of LoRa activity.
     """
 
@@ -283,7 +283,7 @@ class TestLoRaReceive:
             f"  Channel: {channel_config}\n"
             "  Check:\n"
             "    1. --lora-freq/bw/sf/cr match the RTNode's EEPROM config\n"
-            "       (see test_channel_config or '[Boundary] LoRa:' in startup log)\n"
+            "       (see test_channel_config or '[RTNode] LoRa:' in startup log)\n"
             "    2. Antennas are attached to both devices\n"
             "    3. Devices are within LoRa range\n"
             "    4. Firmware has the [LoRa] RX log (rebuild + reflash if not)"

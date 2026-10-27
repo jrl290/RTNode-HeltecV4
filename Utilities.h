@@ -1457,7 +1457,7 @@ void setTXPower() {
 		#endif
 
 		#if defined(FIREWALL_MODE) && (BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3)
-			Serial.printf("[Boundary] TXP: requested=%d effective=%d modem=%d pa=%u\r\n",
+			Serial.printf("[RTNode] TXP: requested=%d effective=%d modem=%d pa=%u\r\n",
 				requested_lora_txp, lora_txp, mapped_lora_txp,
 				#if HAS_LORA_PA
 					(unsigned)lora_pa_model

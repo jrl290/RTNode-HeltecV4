@@ -240,7 +240,7 @@ def rtnode(rtnode_port, baud) -> KissSerial:
     Open a connection to the RTNode for the whole test session.
 
     Resets the device via DTR/RTS at session start so the startup log
-    (including ``[Boundary] LoRa: freq=... bw=... sf=... cr=... txp=...``)
+    (including ``[RTNode] LoRa: freq=... bw=... sf=... cr=... txp=...``)
     is always captured.  This makes ``test_channel_config`` reliable rather
     than dependent on the device having been rebooted externally.
     """

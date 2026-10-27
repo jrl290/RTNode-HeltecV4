@@ -231,9 +231,9 @@ def summarise(args, serial_lines, ping_lines, flood_lines, window_start, window_
                            "flash_ms": int(match.group(4)), "flash_ops": int(match.group(5)),
                            "tcp_ms": int(match.group(6)), "tcp_ops": int(match.group(7)),
                            "other_ms": int(match.group(8) or 0)})
-        elif "[Boundary] TXCFG" in text:
+        elif "[RTNode] TXCFG" in text:
             tx_start = t
-        elif "[Boundary] TXDONE" in text and tx_start is not None:
+        elif "[RTNode] TXDONE" in text and tx_start is not None:
             tx_windows.append((tx_start, t))
             tx_start = None
         elif text.startswith("[FLASH]"):

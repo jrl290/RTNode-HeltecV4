@@ -299,11 +299,11 @@ TcpInterface*  tcp_interface_ptrs[FIREWALL_BACKBONE_SLOTS] = { nullptr, nullptr,
 RNS::Interface local_tcp_rns_interface(RNS::Type::NONE);
 TcpInterface*  local_tcp_interface_ptr = nullptr;
 // RTC memory flag — survives software reset but not power cycle
-RTC_NOINIT_ATTR uint32_t boundary_config_request;
-#define BOUNDARY_CONFIG_MAGIC 0xC0F19A7E
+RTC_NOINIT_ATTR uint32_t firewall_config_request;
+#define FIREWALL_CONFIG_MAGIC 0xC0F19A7E
 // RTC flag to skip config portal on next boot (set when user powers off from WCC)
-RTC_NOINIT_ATTR uint32_t boundary_skip_config;
-#define BOUNDARY_SKIP_MAGIC 0x5E1FC0F0
+RTC_NOINIT_ATTR uint32_t firewall_skip_config;
+#define FIREWALL_SKIP_MAGIC 0x5E1FC0F0
 
 // Bootloop detection: count rapid reboots in RTC memory.
 // After BOOTLOOP_THRESHOLD consecutive reboots within BOOTLOOP_WINDOW_MS,
@@ -323,34 +323,34 @@ RTC_NOINIT_ATTR uint32_t rtc_node_hash_magic;
 RTC_NOINIT_ATTR char     rtc_node_hash_hex[33];  // 32 hex chars + NUL
 RTC_NOINIT_ATTR char     rtc_probe_hash_hex[21]; // 20 hex chars + NUL
 
-RTC_NOINIT_ATTR BoundaryResetReport boundary_reset_report;
+RTC_NOINIT_ATTR ResetReport reset_report;
 
-static uint16_t boundary_nominal_path_table_maxsize = 0;
-static uint16_t boundary_nominal_path_table_maxpersist = 0;
+static uint16_t nominal_path_table_maxsize = 0;
+static uint16_t nominal_path_table_maxpersist = 0;
 
-bool boundary_reset_report_available() {
-  return boundary_reset_report.magic == BOUNDARY_RESET_REPORT_MAGIC
-      && boundary_reset_report.version == BOUNDARY_RESET_REPORT_VERSION
-      && boundary_reset_report.cause != BOUNDARY_RESET_CAUSE_NONE;
+bool reset_report_available() {
+  return reset_report.magic == RESET_REPORT_MAGIC
+      && reset_report.version == RESET_REPORT_VERSION
+      && reset_report.cause != RESET_CAUSE_NONE;
 }
 
-const char* boundary_reset_cause_label(uint8_t cause) {
+const char* reset_cause_label(uint8_t cause) {
   switch (cause) {
-    case BOUNDARY_RESET_CAUSE_HEAP_WATCHDOG: return "Heap watchdog";
-    case BOUNDARY_RESET_CAUSE_WIFI_WATCHDOG: return "WiFi watchdog";
+    case RESET_CAUSE_HEAP_WATCHDOG: return "Heap watchdog";
+    case RESET_CAUSE_WIFI_WATCHDOG: return "WiFi watchdog";
     default: return "Unknown";
   }
 }
 
-const char* boundary_heap_stage_label(uint8_t stage) {
+const char* heap_stage_label(uint8_t stage) {
   switch (stage) {
-    case BOUNDARY_HEAP_STAGE_SHED: return "Queue shedding";
-    case BOUNDARY_HEAP_STAGE_TRIM: return "Path-table trim";
+    case HEAP_STAGE_SHED: return "Queue shedding";
+    case HEAP_STAGE_TRIM: return "Path-table trim";
     default: return "None";
   }
 }
 
-const char* boundary_reset_reason_label(uint8_t reason) {
+const char* reset_reason_label(uint8_t reason) {
   switch (reason) {
     case 0: return "Pending";
     case POWERON_RESET: return "Power-on";
@@ -376,65 +376,65 @@ const char* boundary_reset_reason_label(uint8_t reason) {
   }
 }
 
-static void boundary_clear_reset_report() {
-  memset(&boundary_reset_report, 0, sizeof(boundary_reset_report));
+static void clear_reset_report() {
+  memset(&reset_report, 0, sizeof(reset_report));
 }
 
-static void boundary_note_reset_report_boot_reason() {
+static void note_reset_report_boot_reason() {
   uint8_t reset_reason = (uint8_t)rtc_get_reset_reason(0);
 
   if (reset_reason == POWERON_RESET) {
-    boundary_clear_reset_report();
+    clear_reset_report();
     return;
   }
 
-  if (boundary_reset_report_available() && boundary_reset_report.observed_reset_reason == 0) {
-    boundary_reset_report.observed_reset_reason = reset_reason;
-    Serial.printf("[Boundary] Last automatic reset: %s, observed=%s, heap=%lu, min=%lu, max_alloc=%lu\r\n",
-                  boundary_reset_cause_label(boundary_reset_report.cause),
-                  boundary_reset_reason_label(boundary_reset_report.observed_reset_reason),
-                  boundary_reset_report.free_heap,
-                  boundary_reset_report.min_free_heap,
-                  boundary_reset_report.max_alloc_heap);
+  if (reset_report_available() && reset_report.observed_reset_reason == 0) {
+    reset_report.observed_reset_reason = reset_reason;
+    Serial.printf("[RTNode] Last automatic reset: %s, observed=%s, heap=%lu, min=%lu, max_alloc=%lu\r\n",
+                  reset_cause_label(reset_report.cause),
+                  reset_reason_label(reset_report.observed_reset_reason),
+                  reset_report.free_heap,
+                  reset_report.min_free_heap,
+                  reset_report.max_alloc_heap);
   }
 }
 
-static void boundary_capture_reset_report(uint8_t cause, uint8_t heap_stage, uint32_t free_heap, int32_t wifi_status) {
-  boundary_reset_report.magic = BOUNDARY_RESET_REPORT_MAGIC;
-  boundary_reset_report.version = BOUNDARY_RESET_REPORT_VERSION;
-  boundary_reset_report.cause = cause;
-  boundary_reset_report.heap_stage = heap_stage;
-  boundary_reset_report.observed_reset_reason = 0;
-  boundary_reset_report.uptime_ms = millis();
-  boundary_reset_report.free_heap = free_heap;
-  boundary_reset_report.min_free_heap = ESP.getMinFreeHeap();
-  boundary_reset_report.max_alloc_heap = ESP.getMaxAllocHeap();
-  boundary_reset_report.wifi_status = wifi_status;
-  boundary_reset_report.path_table_maxsize = RNS::Transport::path_table_maxsize();
-  boundary_reset_report.path_table_maxpersist = RNS::Transport::probe_destination_enabled();
-  boundary_reset_report.bridged_lora_to_tcp = firewall_state.packets_bridged_lora_to_tcp;
-  boundary_reset_report.bridged_tcp_to_lora = firewall_state.packets_bridged_tcp_to_lora;
+static void capture_reset_report(uint8_t cause, uint8_t heap_stage, uint32_t free_heap, int32_t wifi_status) {
+  reset_report.magic = RESET_REPORT_MAGIC;
+  reset_report.version = RESET_REPORT_VERSION;
+  reset_report.cause = cause;
+  reset_report.heap_stage = heap_stage;
+  reset_report.observed_reset_reason = 0;
+  reset_report.uptime_ms = millis();
+  reset_report.free_heap = free_heap;
+  reset_report.min_free_heap = ESP.getMinFreeHeap();
+  reset_report.max_alloc_heap = ESP.getMaxAllocHeap();
+  reset_report.wifi_status = wifi_status;
+  reset_report.path_table_maxsize = RNS::Transport::path_table_maxsize();
+  reset_report.path_table_maxpersist = RNS::Transport::probe_destination_enabled();
+  reset_report.bridged_lora_to_tcp = firewall_state.packets_bridged_lora_to_tcp;
+  reset_report.bridged_tcp_to_lora = firewall_state.packets_bridged_tcp_to_lora;
 }
 
-static void boundary_restore_path_caps_if_needed() {
-  if (boundary_nominal_path_table_maxsize == 0 || boundary_nominal_path_table_maxpersist == 0) {
+static void restore_path_caps_if_needed() {
+  if (nominal_path_table_maxsize == 0 || nominal_path_table_maxpersist == 0) {
     return;
   }
 
-  if (RNS::Transport::path_table_maxsize() != boundary_nominal_path_table_maxsize ||
-      RNS::Transport::probe_destination_enabled() != boundary_nominal_path_table_maxpersist) {
-    RNS::Transport::path_table_maxsize(boundary_nominal_path_table_maxsize);
-    RNS::Transport::path_table_maxpersist(boundary_nominal_path_table_maxpersist);
+  if (RNS::Transport::path_table_maxsize() != nominal_path_table_maxsize ||
+      RNS::Transport::probe_destination_enabled() != nominal_path_table_maxpersist) {
+    RNS::Transport::path_table_maxsize(nominal_path_table_maxsize);
+    RNS::Transport::path_table_maxpersist(nominal_path_table_maxpersist);
     RNS::Transport::cull_path_table();
   }
 }
 
-static void boundary_trim_path_caps_for_pressure() {
-  if (boundary_nominal_path_table_maxsize == 0 || boundary_nominal_path_table_maxpersist == 0) {
+static void trim_path_caps_for_pressure() {
+  if (nominal_path_table_maxsize == 0 || nominal_path_table_maxpersist == 0) {
     return;
   }
 
-  uint16_t trimmed_maxsize = boundary_nominal_path_table_maxsize;
+  uint16_t trimmed_maxsize = nominal_path_table_maxsize;
   if (trimmed_maxsize > 8) {
     trimmed_maxsize = trimmed_maxsize / 2;
     if (trimmed_maxsize < 8) {
@@ -442,7 +442,7 @@ static void boundary_trim_path_caps_for_pressure() {
     }
   }
 
-  uint16_t trimmed_maxpersist = boundary_nominal_path_table_maxpersist;
+  uint16_t trimmed_maxpersist = nominal_path_table_maxpersist;
   if (trimmed_maxpersist > 4) {
     trimmed_maxpersist = trimmed_maxpersist / 2;
     if (trimmed_maxpersist < 4) {
@@ -462,14 +462,14 @@ static void boundary_trim_path_caps_for_pressure() {
   }
 }
 
-static void boundary_apply_heap_relief(uint8_t heap_stage) {
-  if (heap_stage >= BOUNDARY_HEAP_STAGE_SHED) {
+static void apply_heap_relief(uint8_t heap_stage) {
+  if (heap_stage >= HEAP_STAGE_SHED) {
     RNS::Transport::drop_announce_queues();
     RNS::Transport::clear_caches_in_memory();  // clear packet hashlist, global blobs, rate table
   }
 
-  if (heap_stage >= BOUNDARY_HEAP_STAGE_TRIM) {
-    boundary_trim_path_caps_for_pressure();
+  if (heap_stage >= HEAP_STAGE_TRIM) {
+    trim_path_caps_for_pressure();
   }
 
   RNS::Transport::clean_caches();
@@ -502,7 +502,7 @@ void setup() {
   delay(2000);
 
   #ifdef FIREWALL_MODE
-    boundary_note_reset_report_boot_reason();
+    note_reset_report_boot_reason();
   #endif
 
   // Configure WDT
@@ -728,7 +728,7 @@ void setup() {
     // Load LoRa config from EEPROM so the portal can show current values
     eeprom_conf_load();
 
-    // Load boundary config so the portal can show current/default values
+    // Load firewall config so the portal can show current/default values
     firewall_load_config();
 
     // ── Bootloop detection ───────────────────────────────────────────────
@@ -747,7 +747,7 @@ void setup() {
         bootloop_count++;
         // Check if we're within the time window
         if (bootloop_count >= BOOTLOOP_THRESHOLD) {
-          Serial.printf("[Boundary] BOOTLOOP DETECTED: %lu reboots — forcing config portal\r\n", bootloop_count);
+          Serial.printf("[RTNode] BOOTLOOP DETECTED: %lu reboots — forcing config portal\r\n", bootloop_count);
           bootloop_detected = true;
           // Reset counter so next reboot after config portal doesn't re-trigger
           bootloop_count = 0;
@@ -759,29 +759,29 @@ void setup() {
     // Enter config mode if: first boot with no config, OR button-triggered reboot,
     // OR bootloop detected
     bool app_marker_missing = !firewall_app_marker_valid();
-    bool need_config = boundary_needs_config();
-    bool config_requested = (boundary_config_request == BOUNDARY_CONFIG_MAGIC);
-    bool skip_config = (boundary_skip_config == BOUNDARY_SKIP_MAGIC);
-    boundary_config_request = 0;  // Clear flag immediately
-    boundary_skip_config = 0;     // Clear skip flag immediately
+    bool need_config = firewall_needs_config();
+    bool config_requested = (firewall_config_request == FIREWALL_CONFIG_MAGIC);
+    bool skip_config = (firewall_skip_config == FIREWALL_SKIP_MAGIC);
+    firewall_config_request = 0;  // Clear flag immediately
+    firewall_skip_config = 0;     // Clear skip flag immediately
 
     // Skip flag only suppresses a button-triggered re-entry, not a genuinely
     // unconfigured device.  If there's no config saved, always show the portal.
     if (skip_config && config_requested) {
-      Serial.println("[Boundary] Skipping config portal — user requested normal boot");
+      Serial.println("[RTNode] Skipping config portal — user requested normal boot");
       config_requested = false;
     }
 
     if (need_config || config_requested || bootloop_detected) {
       if (bootloop_detected) {
-        Serial.println("[Boundary] Entering config portal due to bootloop recovery");
+        Serial.println("[RTNode] Entering config portal due to bootloop recovery");
       } else if (config_requested) {
-        Serial.println("[Boundary] Config mode requested via button hold");
+        Serial.println("[RTNode] Config mode requested via button hold");
       } else if (app_marker_missing) {
-        Serial.println("[Boundary] RTNode app marker missing — previous firmware was not RTNode or config is unclaimed");
-        Serial.println("[Boundary] Starting config portal to migrate settings into RTNode");
+        Serial.println("[RTNode] RTNode app marker missing — previous firmware was not RTNode or config is unclaimed");
+        Serial.println("[RTNode] Starting config portal to migrate settings into RTNode");
       } else {
-        Serial.println("[Boundary] No configuration found — starting config portal");
+        Serial.println("[RTNode] No configuration found — starting config portal");
       }
       config_portal_start();
       // Block here: only run the config portal until user saves and device reboots
@@ -795,7 +795,7 @@ void setup() {
         headless_led_ramp();
 
         // Button handling: allow 1-3s press to turn off (deep sleep)
-        // Next power-on boots to normal mode since boundary_config_request is cleared
+        // Next power-on boots to normal mode since firewall_config_request is cleared
         #if HAS_INPUT
         {
           int btn = digitalRead(pin_btn_usr1);
@@ -806,8 +806,8 @@ void setup() {
             uint32_t held = millis() - wcc_btn_down_at;
             wcc_btn_down = false;
             if (held >= 700 && held <= 5000) {
-              Serial.println("[Boundary] Button press in WCC mode — powering off");
-              boundary_skip_config = BOUNDARY_SKIP_MAGIC;  // Skip config on next boot
+              Serial.println("[RTNode] Button press in WCC mode — powering off");
+              firewall_skip_config = FIREWALL_SKIP_MAGIC;  // Skip config on next boot
               headless_led_off();
               config_portal_stop();
               #if HAS_SLEEP
@@ -845,7 +845,7 @@ void setup() {
       #endif
     #else
       #if defined(FIREWALL_MODE)
-        // Even when BLE/BT are compile-time disabled (e.g. V3 boundary),
+        // Even when BLE/BT are compile-time disabled (e.g. the V3 build),
         // the ESP32 BT controller is still loaded. Release its ~70KB of RAM,
         // unless Bluetooth peers are on (BleInterface.h): released memory
         // cannot come back without a reboot.
@@ -858,7 +858,7 @@ void setup() {
         {
           btStop();
           esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
-          Serial.write("[Boundary] Released BT controller memory\r\n");
+          Serial.write("[RTNode] Released BT controller memory\r\n");
         }
       #endif
     #endif
@@ -1039,8 +1039,8 @@ void setup() {
       // links to them failed.
       RNS::Transport::path_table_maxsize(RNS::Utilities::OS::heap_in_psram() ? 256 : 24);
       RNS::Transport::path_table_maxpersist(12);
-      boundary_nominal_path_table_maxsize = RNS::Transport::path_table_maxsize();
-      boundary_nominal_path_table_maxpersist = RNS::Transport::probe_destination_enabled();
+      nominal_path_table_maxsize = RNS::Transport::path_table_maxsize();
+      nominal_path_table_maxpersist = RNS::Transport::probe_destination_enabled();
       firewall_load_config();
 
 #ifdef RTNODE_BENCH
@@ -1253,7 +1253,7 @@ void setup() {
       // ── Startup LAN probe ──────────────────────────────────────────────
       // Send a path request for our own transport identity on LoRa to trigger
       // local devices to announce themselves. This seeds the path table and
-      // Whitelist 1 so the boundary knows about local devices immediately,
+      // Whitelist 1 so the firewall knows about local devices immediately,
       // rather than waiting for them to transmit on their own schedule.
       {
         RNS::Identity transport_id = RNS::Transport::identity();
@@ -2771,12 +2771,12 @@ void validate_status() {
       #if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
         model = MODEL_C8;
       #endif
-      Serial.write("[Boundary] Provisioning check bypassed, modem installed\r\n");
+      Serial.write("[RTNode] Provisioning check bypassed, modem installed\r\n");
 
       // Load LoRa config from EEPROM (written by config portal)
       if (eeprom_have_conf()) {
         eeprom_conf_load();
-        Serial.write("[Boundary] Loaded LoRa config from EEPROM\r\n");
+        Serial.write("[RTNode] Loaded LoRa config from EEPROM\r\n");
       } else {
         // Use sensible defaults if no config saved yet
         lora_freq = 914875000;
@@ -2784,7 +2784,7 @@ void validate_status() {
         lora_sf   = 10;
         lora_cr   = 5;
         lora_txp  = 28;
-        Serial.write("[Boundary] No LoRa config in EEPROM, using defaults\r\n");
+        Serial.write("[RTNode] No LoRa config in EEPROM, using defaults\r\n");
       }
 #if defined(RTNODE_BENCH) && defined(RTNODE_BENCH_TXP)
       // Bench build only: cap transmit power so load tests stay on the bench.
@@ -2795,7 +2795,7 @@ void validate_status() {
       }
 #endif
       // Always log the active channel config so tests/diagnostics can verify it
-      Serial.printf("[Boundary] LoRa: freq=%lu bw=%lu sf=%u cr=%u txp=%u\r\n",
+      Serial.printf("[RTNode] LoRa: freq=%lu bw=%lu sf=%u cr=%u txp=%u\r\n",
           (unsigned long)lora_freq, (unsigned long)lora_bw,
           (unsigned)lora_sf, (unsigned)lora_cr, (unsigned)lora_txp);
 
@@ -2807,7 +2807,7 @@ void validate_status() {
       startRadio();
     } else {
       hw_ready = false;
-      Serial.write("[Boundary] No radio module found\r\n");
+      Serial.write("[RTNode] No radio module found\r\n");
       #if HAS_DISPLAY
         if (disp_ready) {
           device_init_done = true;
@@ -3001,7 +3001,7 @@ void loop() {
   if (bootloop_magic == BOOTLOOP_MAGIC) {
     bootloop_magic = 0;
     bootloop_count = 0;
-    Serial.println("[Boundary] Boot stable — bootloop counter cleared");
+    Serial.println("[RTNode] Boot stable — bootloop counter cleared");
   }
 
   // ── Heap + WiFi watchdog ───────────────────────────────────────────────────
@@ -3016,25 +3016,25 @@ void loop() {
     static const uint32_t HEAP_SEVERE     = 24000;  // trim path tables before restart threshold
     static const uint32_t HEAP_CRITICAL   = 20000;  // 20KB minimum internal heap
     static const uint32_t HEAP_RECOVERY   = 34000;  // hysteresis before restoring normal caps
-    static uint8_t  _heap_pressure_stage  = BOUNDARY_HEAP_STAGE_NONE;
+    static uint8_t  _heap_pressure_stage  = HEAP_STAGE_NONE;
 
     // ── Heap pressure check (runs always) ─────────────────────────────────
     uint32_t free_heap = ESP.getFreeHeap();
-    if (_heap_pressure_stage == BOUNDARY_HEAP_STAGE_NONE && free_heap < HEAP_PRESSURE) {
+    if (_heap_pressure_stage == HEAP_STAGE_NONE && free_heap < HEAP_PRESSURE) {
       Serial.printf("\r\n[WATCHDOG] HEAP PRESSURE: %u < %u — shedding announce/cache state\r\n",
                     free_heap, HEAP_PRESSURE);
-      boundary_apply_heap_relief(BOUNDARY_HEAP_STAGE_SHED);
+      apply_heap_relief(HEAP_STAGE_SHED);
       RNS::Transport::dump_stats();
-      _heap_pressure_stage = BOUNDARY_HEAP_STAGE_SHED;
+      _heap_pressure_stage = HEAP_STAGE_SHED;
       free_heap = ESP.getFreeHeap();
       Serial.printf("[WATCHDOG] Heap after shedding: %u\r\n", free_heap);
     }
 
-    if (_heap_pressure_stage < BOUNDARY_HEAP_STAGE_TRIM && free_heap < HEAP_SEVERE) {
+    if (_heap_pressure_stage < HEAP_STAGE_TRIM && free_heap < HEAP_SEVERE) {
       Serial.printf("[WATCHDOG] HEAP SEVERE: %u < %u — trimming path-table caps\r\n",
                     free_heap, HEAP_SEVERE);
-      boundary_apply_heap_relief(BOUNDARY_HEAP_STAGE_TRIM);
-      _heap_pressure_stage = BOUNDARY_HEAP_STAGE_TRIM;
+      apply_heap_relief(HEAP_STAGE_TRIM);
+      _heap_pressure_stage = HEAP_STAGE_TRIM;
       free_heap = ESP.getFreeHeap();
       Serial.printf("[WATCHDOG] Heap after trim: %u (path caps %u/%u)\r\n",
                     free_heap,
@@ -3043,15 +3043,15 @@ void loop() {
     }
 
     if (free_heap < HEAP_CRITICAL) {
-      boundary_apply_heap_relief(_heap_pressure_stage >= BOUNDARY_HEAP_STAGE_TRIM
-                                   ? BOUNDARY_HEAP_STAGE_TRIM
-                                   : BOUNDARY_HEAP_STAGE_SHED);
+      apply_heap_relief(_heap_pressure_stage >= HEAP_STAGE_TRIM
+                          ? HEAP_STAGE_TRIM
+                          : HEAP_STAGE_SHED);
       free_heap = ESP.getFreeHeap();
 
       if (free_heap >= HEAP_CRITICAL) {
         Serial.printf("[WATCHDOG] Heap recovered to %u after emergency relief\r\n", free_heap);
       } else {
-        boundary_capture_reset_report(BOUNDARY_RESET_CAUSE_HEAP_WATCHDOG, _heap_pressure_stage, free_heap, (int32_t)WiFi.status());
+        capture_reset_report(RESET_CAUSE_HEAP_WATCHDOG, _heap_pressure_stage, free_heap, (int32_t)WiFi.status());
       Serial.printf("\r\n[WATCHDOG] CRITICAL: Free heap %u < %u — REBOOTING\r\n",
                     free_heap, HEAP_CRITICAL);
       Serial.printf("[WATCHDOG] Min free: %u  Max alloc: %u\r\n",
@@ -3060,11 +3060,11 @@ void loop() {
       delay(100);
       ESP.restart();
       }
-    } else if (_heap_pressure_stage != BOUNDARY_HEAP_STAGE_NONE && free_heap > HEAP_RECOVERY) {
-      boundary_restore_path_caps_if_needed();
+    } else if (_heap_pressure_stage != HEAP_STAGE_NONE && free_heap > HEAP_RECOVERY) {
+      restore_path_caps_if_needed();
       Serial.printf("[WATCHDOG] Heap recovered: %u > %u — restored steady-state caps\r\n",
                     free_heap, HEAP_RECOVERY);
-      _heap_pressure_stage = BOUNDARY_HEAP_STAGE_NONE;
+      _heap_pressure_stage = HEAP_STAGE_NONE;
     }
 
     // ── Periodic report (every 30s) ───────────────────────────────────────
@@ -3098,7 +3098,7 @@ void loop() {
       }
       // Check if grace period expired — unrecoverable, reboot
       if ((millis() - _wifi_lost_at) >= WIFI_GRACE_MS) {
-        boundary_capture_reset_report(BOUNDARY_RESET_CAUSE_WIFI_WATCHDOG, _heap_pressure_stage, ESP.getFreeHeap(), (int32_t)WiFi.status());
+        capture_reset_report(RESET_CAUSE_WIFI_WATCHDOG, _heap_pressure_stage, ESP.getFreeHeap(), (int32_t)WiFi.status());
         Serial.printf("\r\n[WATCHDOG] WiFi down %lu ms — REBOOTING\r\n",
                       millis() - _wifi_lost_at);
         Serial.printf("[WATCHDOG] WiFi.status()=%d heap=%u\r\n",
@@ -3358,8 +3358,8 @@ void button_event(uint8_t event, unsigned long duration) {
       //   >700ms = sleep
       //   short = display unblank
       if (duration > 5000) {
-        Serial.println("[Boundary] Button hold >5s — rebooting into config mode");
-        boundary_config_request = BOUNDARY_CONFIG_MAGIC;
+        Serial.println("[RTNode] Button hold >5s — rebooting into config mode");
+        firewall_config_request = FIREWALL_CONFIG_MAGIC;
         delay(100);
         ESP.restart();
       } else if (duration > 700) {

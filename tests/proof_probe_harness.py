@@ -60,7 +60,7 @@ SCENARIOS = {
         name="wan-to-local-tcp",
         description=(
             "WAN or LoRa client to RTNode local TCP server. Uses a separate work "
-            "directory from lora-to-local-tcp for firewall and boundary tests."
+            "directory from lora-to-local-tcp for firewall tests."
         ),
         client_side="lora",
         server_side="tcp",
