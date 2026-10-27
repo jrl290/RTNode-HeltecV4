@@ -156,7 +156,7 @@ Internal heap steady at 204 KB free (min 198 KB).
   cores stalled.
 - One idle stall of 1.5 s had no instrumented cause; `[STALL]` now reports
   unattributed time (`other=`) so the next one is visible.
-- Pre-existing bug: `boundary_nominal_path_table_maxpersist` is set from
+- Pre-existing bug: `nominal_path_table_maxpersist` is set from
   `probe_destination_enabled()` ([RNode_Firmware.ino:1009](RNode_Firmware.ino)),
   so restoring the cap after heap pressure would persist at most one path.
 
@@ -218,7 +218,7 @@ Read-only investigation, 2026-09-27. "Proven" means read in the code;
   Two candidates remain: the flash writes in 5 (a flash write stalls both
   cores, and this SDK build does not keep WiFi/lwIP in IRAM), and RF or supply
   coupling from the V4's PA, which defaults to 28 dBm. The harness separates
-  them by lining host ping timestamps up against the `[Boundary] TXCFG` /
+  them by lining host ping timestamps up against the `[RTNode] TXCFG` /
   `TXDONE` serial marks and the flash-write marks, then repeating at 2 dBm and
   with announce caching disabled.
 - The reporter's setup is the CORE_PRINCIPLES hazard exactly: a transport

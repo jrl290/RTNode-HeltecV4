@@ -21,11 +21,11 @@
 //   - WAN→LAN traffic is filtered unless a LAN device has "punched a hole"
 //     by referencing the source or a LAN device has been referenced first.
 //
-// The boundary node operates with a LoRa mesh interface plus up to four
+// RTNode operates with a LoRa mesh interface plus up to four
 // TCP backbone client interfaces:
 //
 //   1. LoRaInterface (MODE_GATEWAY) — radio side, handles LoRa mesh
-//   2. BackboneInterface[1-4] (MODE_BOUNDARY) — WiFi side TCP uplinks
+//   2. BackboneInterface[1-4] (MODE_BACKBONE) — WiFi side TCP uplinks
 //
 // RNS Transport is ALWAYS enabled in firewall mode.
 // Packets received on either interface are routed through Transport
@@ -201,7 +201,7 @@ struct FirewallState {
 };
 #endif // FIREWALL_STATE_DEFINED
 
-// Global boundary state instance (defined in RNode_Firmware.ino)
+// Global firewall state instance (defined in RNode_Firmware.ino)
 extern FirewallState firewall_state;
 
 inline size_t firewall_backbone_enabled_count() {

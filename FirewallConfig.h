@@ -1,10 +1,8 @@
 // Copyright (C) 2026, Firewall Mode Extension
 // Based on microReticulum_Firmware by Mark Qvist
 //
-// FirewallConfig.h — Captive-portal web configuration for the legacy
-// "Firewall Mode" path.
-// together with the rest of the boundary-mode terminology. In this fork,
-// Firewall Mode is the only intended mode of operation in this fork.
+// FirewallConfig.h — Captive-portal web configuration for Firewall Mode,
+// the only intended mode of operation in this fork.
 // When triggered (first boot with no config, or button hold >5s),
 // the device starts a WiFi AP with a web form for all settings:
 //   WiFi STA credentials, TCP backbone params, LoRa radio params,
@@ -32,22 +30,22 @@ extern uint32_t rtc_node_hash_magic;
 extern char     rtc_node_hash_hex[33];
 extern char     rtc_probe_hash_hex[21];
 
-#define BOUNDARY_RESET_REPORT_MAGIC    0x42525054UL
-#define BOUNDARY_RESET_REPORT_VERSION  1
+#define RESET_REPORT_MAGIC    0x42525054UL
+#define RESET_REPORT_VERSION  1
 
-enum BoundaryResetCause : uint8_t {
-    BOUNDARY_RESET_CAUSE_NONE = 0,
-    BOUNDARY_RESET_CAUSE_HEAP_WATCHDOG = 1,
-    BOUNDARY_RESET_CAUSE_WIFI_WATCHDOG = 2,
+enum ResetCause : uint8_t {
+    RESET_CAUSE_NONE = 0,
+    RESET_CAUSE_HEAP_WATCHDOG = 1,
+    RESET_CAUSE_WIFI_WATCHDOG = 2,
 };
 
-enum BoundaryHeapPressureStage : uint8_t {
-    BOUNDARY_HEAP_STAGE_NONE = 0,
-    BOUNDARY_HEAP_STAGE_SHED = 1,
-    BOUNDARY_HEAP_STAGE_TRIM = 2,
+enum HeapPressureStage : uint8_t {
+    HEAP_STAGE_NONE = 0,
+    HEAP_STAGE_SHED = 1,
+    HEAP_STAGE_TRIM = 2,
 };
 
-struct BoundaryResetReport {
+struct ResetReport {
     uint32_t magic;
     uint8_t version;
     uint8_t cause;
@@ -64,11 +62,11 @@ struct BoundaryResetReport {
     uint32_t bridged_tcp_to_lora;
 };
 
-extern BoundaryResetReport boundary_reset_report;
-bool boundary_reset_report_available();
-const char* boundary_reset_cause_label(uint8_t cause);
-const char* boundary_heap_stage_label(uint8_t stage);
-const char* boundary_reset_reason_label(uint8_t reason);
+extern ResetReport reset_report;
+bool reset_report_available();
+const char* reset_cause_label(uint8_t cause);
+const char* heap_stage_label(uint8_t stage);
+const char* reset_reason_label(uint8_t reason);
 
 // ─── Config Portal State ─────────────────────────────────────────────────────
 static bool config_portal_active = false;
@@ -84,7 +82,7 @@ void config_portal_start();
 void config_portal_stop();
 void config_portal_loop();
 bool config_portal_is_active();
-bool boundary_needs_config();
+bool firewall_needs_config();
 
 // ─── Common bandwidth values (Hz) ───────────────────────────────────────────
 // These match Reticulum standard channel plans
@@ -197,56 +195,56 @@ static void config_send_html() {
     }
     html += F("</code></div>");
 
-    if (boundary_reset_report_available()) {
+    if (reset_report_available()) {
         html += F("<div class='reset-report'><span class='rr-title'>&#x26a0; Last automatic reset report</span><div class='rr-grid'>");
 
         html += F("<div><div class='rr-key'>Trigger</div><div class='rr-val'>");
-        html += String(boundary_reset_cause_label(boundary_reset_report.cause));
+        html += String(reset_cause_label(reset_report.cause));
         html += F("</div></div>");
 
         html += F("<div><div class='rr-key'>Observed reset</div><div class='rr-val'>");
-        html += String(boundary_reset_reason_label(boundary_reset_report.observed_reset_reason));
-        if (boundary_reset_report.observed_reset_reason != 0) {
+        html += String(reset_reason_label(reset_report.observed_reset_reason));
+        if (reset_report.observed_reset_reason != 0) {
             html += F(" (");
-            html += String((unsigned)boundary_reset_report.observed_reset_reason);
+            html += String((unsigned)reset_report.observed_reset_reason);
             html += F(")");
         }
         html += F("</div></div>");
 
         html += F("<div><div class='rr-key'>Heap stage</div><div class='rr-val'>");
-        html += String(boundary_heap_stage_label(boundary_reset_report.heap_stage));
+        html += String(heap_stage_label(reset_report.heap_stage));
         html += F("</div></div>");
 
         html += F("<div><div class='rr-key'>Uptime at reset</div><div class='rr-val'>");
-        html += String(boundary_reset_report.uptime_ms / 1000UL);
+        html += String(reset_report.uptime_ms / 1000UL);
         html += F(" s</div></div>");
 
         html += F("<div><div class='rr-key'>Free heap</div><div class='rr-val'>");
-        html += String(boundary_reset_report.free_heap);
+        html += String(reset_report.free_heap);
         html += F(" B</div></div>");
 
         html += F("<div><div class='rr-key'>Min free heap</div><div class='rr-val'>");
-        html += String(boundary_reset_report.min_free_heap);
+        html += String(reset_report.min_free_heap);
         html += F(" B</div></div>");
 
         html += F("<div><div class='rr-key'>Max alloc heap</div><div class='rr-val'>");
-        html += String(boundary_reset_report.max_alloc_heap);
+        html += String(reset_report.max_alloc_heap);
         html += F(" B</div></div>");
 
         html += F("<div><div class='rr-key'>WiFi status</div><div class='rr-val'>");
-        html += String(boundary_reset_report.wifi_status);
+        html += String(reset_report.wifi_status);
         html += F("</div></div>");
 
         html += F("<div><div class='rr-key'>Path caps</div><div class='rr-val'>");
-        html += String(boundary_reset_report.path_table_maxsize);
+        html += String(reset_report.path_table_maxsize);
         html += F("/");
-        html += String(boundary_reset_report.path_table_maxpersist);
+        html += String(reset_report.path_table_maxpersist);
         html += F("</div></div>");
 
         html += F("<div><div class='rr-key'>Bridge counters</div><div class='rr-val'>L-&gt;T ");
-        html += String(boundary_reset_report.bridged_lora_to_tcp);
+        html += String(reset_report.bridged_lora_to_tcp);
         html += F(" / T-&gt;L ");
-        html += String(boundary_reset_report.bridged_tcp_to_lora);
+        html += String(reset_report.bridged_tcp_to_lora);
         html += F("</div></div>");
 
         html += F("</div><div class='rr-note'>Captured before an automatic reboot. Clears on power cycle.</div></div>");
@@ -316,7 +314,7 @@ static void config_send_html() {
     html += F(
         "<h2>&#x1f310; TCP Backbones</h2>"
         "<p class='note'>Configure up to four independent TCP backbone uplinks. "
-        "Each enabled slot becomes its own boundary interface. Leave host blank to disable a slot.</p>"
+        "Each enabled slot becomes its own backbone interface. Leave host blank to disable a slot.</p>"
     );
     for (size_t slot = 0; slot < FIREWALL_BACKBONE_SLOTS; slot++) {
         html += F("<div class='card'>");
@@ -874,7 +872,7 @@ static void config_handle_save() {
     // ── rnprobe responder ──
     firewall_state.probe_enabled = (config_server->arg("probe_en").toInt() == 1);
 
-    // Save boundary config to EEPROM
+    // Save firewall config to EEPROM
     firewall_save_config();
 
     // ── LoRa radio settings ──
@@ -987,7 +985,7 @@ static void config_handle_redirect() {
 }
 
 // ─── Check if config is needed ───────────────────────────────────────────────
-bool boundary_needs_config() {
+bool firewall_needs_config() {
     // If the RTNode app marker is missing, this node was either never
     // configured by RTNode or was flashed from a different firmware family
     // such as stock RNode. Force the portal so RTNode can claim and rewrite
@@ -1007,7 +1005,7 @@ bool boundary_needs_config() {
     // Also check firewall mode enable flag
     uint8_t bmode = EEPROM.read(config_addr(ADDR_CONF_BMODE));
 
-    // Need config if no SSID set and boundary not yet configured
+    // Need config if no SSID set and firewall mode not yet configured
     if (ssid[0] == '\0' && bmode != FIREWALL_ENABLE_BYTE) {
         return true;
     }

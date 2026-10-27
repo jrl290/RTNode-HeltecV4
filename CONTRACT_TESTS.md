@@ -13,7 +13,7 @@ covers whether the node does what the apps on either side of it rely on:
   at reception; unsolicited WAN announces never reach the LAN; LAN traffic
   goes everywhere and teaches the whitelists; the replies it asked for get
   back in.
-- **Links and resources work** across every boundary above, both ways, and
+- **Links and resources work** across every crossing above, both ways, and
   keep working while the LAN churns.
 - **WiFi, Bluetooth and LoRa coexist**: all three carry traffic at once and
   the node stays healthy.
@@ -66,7 +66,7 @@ Results go to `tests/bench-results/<time>-contracts-<suite>/results.json`.
 
 | Check | Passes when |
 |---|---|
-| wan-path-unmentioned | `w` finds no path to `a`'s silent destination: the request dies at the boundary |
+| wan-path-unmentioned | `w` finds no path to `a`'s silent destination: the request dies at the firewall |
 | wan-announce-held | `w`'s announce reaches no LAN agent |
 | lan-announce-out | each LAN agent's announce reaches `w` |
 | lan-path-wan, lan-path-wan-silent | `a` finds `w`'s destinations, announced and silent |
@@ -256,7 +256,7 @@ the temperature on every loop pass (~1,270 a second) did not reproduce it in
   idle ones out, and the search cost grows with the cap. A set would allow a
   larger cap on PSRAM boards.
 - **README's interface modes are stale**: it says LoRa is `MODE_GATEWAY`
-  and the backbone `MODE_BOUNDARY`; the firmware sets every interface to
+  and the backbone `MODE_BACKBONE`; the firmware sets every interface to
   `MODE_FULL`.
 - **A flood fills LoRa's announce queue.** The queue keeps the newest
   announce per destination, 64 destinations at most, sent fewest hops then

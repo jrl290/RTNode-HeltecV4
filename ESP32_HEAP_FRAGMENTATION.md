@@ -12,7 +12,7 @@ static data structures being capped and stable.
 Heap telemetry was already instrumented at three points per packet cycle:
 
 ```
-[HEAP-TEL] boundary: -844 bytes  (after firewall filter)
+[HEAP-TEL] firewall: -844 bytes  (after firewall filter)
 [HEAP-TEL] inbound:  -1212 bytes (after full inbound processing)
 [HEAP-TEL] jobs:     +764 bytes  (after periodic cleanup)
 ```
@@ -30,8 +30,8 @@ Four `std::set<Bytes>` containers were implemented as red-black trees:
 |----------------------------------|-------------|-------------------|
 | `_packet_hashlist`               | 100         | 1                 |
 | `_global_blobs`                  | 8           | 1                 |
-| `_boundary_local_addresses`      | 128         | 1–2               |
-| `_boundary_mentioned_addresses`  | 128         | 4–5               |
+| `_firewall_local_addresses`      | 128         | 1–2               |
+| `_firewall_mentioned_addresses`  | 128         | 4–5               |
 
 Every `insert` allocates a **tree node (~40 bytes)** plus a **`shared_ptr`
 control block (~24 bytes)** for the `Bytes` copy-on-write wrapper.  When the
@@ -76,7 +76,7 @@ overhead** beyond the hash data itself.
   overhead
 - **Zero fragmentation from set-node churn** — vectors do a single realloc on
   growth, no per-element malloc/free
-- **Per-packet `boundary` delta** dropped from ~844 bytes to ~200–300 bytes
+- **Per-packet `firewall` delta** dropped from ~844 bytes to ~200–300 bytes
 - **RAM usage unchanged** at 21.9% (71,624 / 327,680 bytes)
 - **Build size unchanged** at 20.0% flash
 
@@ -91,7 +91,7 @@ headroom on the ESP32:
 | `MAX_GLOBAL_BLOBS` | 16 | 8 | Anti-replay only needs a few recent blobs |
 | `path_table_maxsize` | 24 | 16 | Fewer max destinations in table |
 | `path_table_maxpersist` | 12 | 8 | Fewer entries persisted to flash |
-| `_boundary_maxsize` | 200 | 128 | Less boundary address tracking |
+| `_firewall_maxsize` | 200 | 128 | Less whitelist address tracking |
 
 A `clear_caches_in_memory()` method was added to `Transport`, called from
 the existing heap watchdog at HEAP_PRESSURE (28 KB):

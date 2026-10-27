@@ -1228,7 +1228,7 @@ def _monitor_boot(port, timeout=8):
                     ser.close()
                     return False, output
                 # Any application output means boot succeeded
-                if "[Boundary]" in output or "Node" in output or "WiFi" in output:
+                if "[RTNode]" in output or "Node" in output or "WiFi" in output:
                     ser.close()
                     return True, output
     except Exception:

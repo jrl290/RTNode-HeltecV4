@@ -352,7 +352,7 @@ int sx126x::begin(long frequency) {
     uint8_t byte = 0x01;
     executeOpcode(OP_DIO2_RF_CTRL_6X, &byte, 1);
     #if defined(FIREWALL_MODE)
-      Serial.printf("[Boundary] DIO2RF=%u\r\n", byte);
+      Serial.printf("[RTNode] DIO2RF=%u\r\n", byte);
     #endif
   #endif
 
@@ -395,7 +395,7 @@ int sx126x::begin(long frequency) {
           lora_pa_model = LORA_PA_GC1109;
         }
         #if defined(FIREWALL_MODE)
-          Serial.print("[Boundary] PA detect: model=");
+          Serial.print("[RTNode] PA detect: model=");
           Serial.print(lora_pa_model == LORA_PA_KCT8103L ? "KCT8103L" : "GC1109");
           Serial.println(csd_high ? " csd=HIGH" : " csd=LOW");
         #endif
@@ -467,7 +467,7 @@ int sx126x::beginPacket(int implicitHeader) {
 #if defined(FIREWALL_MODE)
 int sx126x::startTransmit() {
   setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
-  Serial.printf("[Boundary] TXCFG f=%lu sf=%u bw=%u cr=%u ldro=%u pre=%lu hdr=%u len=%u crc=%u iq=0 txp=%d\r\n",
+  Serial.printf("[RTNode] TXCFG f=%lu sf=%u bw=%u cr=%u ldro=%u pre=%lu hdr=%u len=%u crc=%u iq=0 txp=%d\r\n",
     (unsigned long)_frequency, (unsigned)_sf, (unsigned)_bw, (unsigned)_cr,
     (unsigned)_ldro, (unsigned long)_preambleLength, (unsigned)_implicitHeaderMode,
     (unsigned)_payloadLength, (unsigned)_crcMode, (int)_txp);
@@ -487,7 +487,7 @@ bool sx126x::takeTxDone() {
 int sx126x::endPacket() {
   setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
   #if defined(FIREWALL_MODE)
-    Serial.printf("[Boundary] TXCFG f=%lu sf=%u bw=%u cr=%u ldro=%u pre=%lu hdr=%u len=%u crc=%u iq=0 txp=%d\r\n",
+    Serial.printf("[RTNode] TXCFG f=%lu sf=%u bw=%u cr=%u ldro=%u pre=%lu hdr=%u len=%u crc=%u iq=0 txp=%d\r\n",
       (unsigned long)_frequency, (unsigned)_sf, (unsigned)_bw, (unsigned)_cr,
       (unsigned)_ldro, (unsigned long)_preambleLength, (unsigned)_implicitHeaderMode,
       (unsigned)_payloadLength, (unsigned)_crcMode, (int)_txp);
@@ -513,7 +513,7 @@ int sx126x::endPacket() {
   if (!(millis() < w_timeout)) { timed_out = true; }
 
   #if defined(FIREWALL_MODE)
-    Serial.printf("[Boundary] TXDONE irq=%02x%02x timeout=%u pa=%u\r\n",
+    Serial.printf("[RTNode] TXDONE irq=%02x%02x timeout=%u pa=%u\r\n",
       buf[0], buf[1], timed_out ? 1 : 0,
       #if HAS_LORA_PA
         (unsigned)lora_pa_model
@@ -789,7 +789,7 @@ void sx126x::setTxPower(int level, int outputPin) {
   executeOpcode(OP_TX_PARAMS_6X, tx_buf, 2);
 
   #if defined(FIREWALL_MODE)
-    Serial.printf("[Boundary] SXPA pa=%02x%02x%02x%02x ocp=%02x tx=%02x%02x\r\n",
+    Serial.printf("[RTNode] SXPA pa=%02x%02x%02x%02x ocp=%02x tx=%02x%02x\r\n",
       pa_buf[0], pa_buf[1], pa_buf[2], pa_buf[3], (unsigned)OCP_TUNED,
       tx_buf[0], tx_buf[1]);
   #endif
@@ -809,7 +809,7 @@ void sx126x::setFrequency(long frequency) {
   buf[3] = (freq & 0xFF);
   executeOpcode(OP_RF_FREQ_6X, buf, 4);
   #if defined(FIREWALL_MODE)
-    Serial.printf("[Boundary] SXFREQ hz=%lu reg=%02x%02x%02x%02x\r\n",
+    Serial.printf("[RTNode] SXFREQ hz=%lu reg=%02x%02x%02x%02x\r\n",
       (unsigned long)frequency, buf[0], buf[1], buf[2], buf[3]);
   #endif
 }
@@ -900,7 +900,7 @@ void sx126x::setSyncWord(uint16_t sw) {
   #if defined(FIREWALL_MODE)
     uint8_t sync_msb = readRegister(REG_SYNC_WORD_MSB_6X);
     uint8_t sync_lsb = readRegister(REG_SYNC_WORD_LSB_6X);
-    Serial.printf("[Boundary] SXSYNC requested=%04x reg=%02x%02x\r\n", sw, sync_msb, sync_lsb);
+    Serial.printf("[RTNode] SXSYNC requested=%04x reg=%02x%02x\r\n", sw, sync_msb, sync_lsb);
   #endif
 }
 
@@ -939,7 +939,7 @@ void sx126x::pollDio0() {
   #if defined(FIREWALL_MODE)
     // DIO1 also rises on TxDone here, so tell the two apart.
     if (buf[1] & IRQ_TX_DONE_MASK_6X) {
-      Serial.printf("[Boundary] TXDONE irq=%02x%02x timeout=0 pa=%u\r\n", buf[0], buf[1],
+      Serial.printf("[RTNode] TXDONE irq=%02x%02x timeout=0 pa=%u\r\n", buf[0], buf[1],
         #if HAS_LORA_PA
           (unsigned)lora_pa_model
         #else

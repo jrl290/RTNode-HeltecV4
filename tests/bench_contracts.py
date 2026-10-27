@@ -21,7 +21,7 @@ backbone on this machine (tests/wan-backbone/config), which a bench build
 with RTNODE_BENCH_WAN_HOST connects backbone 1 to:
 
   wan-path-unmentioned  a WAN path request for a LAN destination the LAN has
-                        never mentioned dies at the boundary
+                        never mentioned dies at the firewall
   wan-announce-held     an unsolicited WAN announce does not reach the LAN
   lan-announce-out      LAN announces reach the WAN
   lan-path-wan(-silent) the LAN finds WAN destinations, announced or not
@@ -35,7 +35,7 @@ with RTNODE_BENCH_WAN_HOST connects backbone 1 to:
   wan-announce-known    a WAN announce for a destination the LAN asked about
                         crosses
   wan-link-survives-churn, wan-reaches-quiet-lan
-                        a link across the boundary, and a LAN destination
+                        a link across the firewall, and a LAN destination
                         that stays quiet, survive the LAN mentioning more new
                         addresses than the whitelists hold
   wan-flood             a WAN flood of announces for unknown destinations
@@ -325,7 +325,7 @@ def wan(args):
         return 45 if slow(*pair) else 15
 
     try:
-        print("the boundary holds:", flush=True)
+        print("the firewall holds:", flush=True)
         path = w.call("path", 60, cmd="path", dest=a.silent, timeout=15)
         record("wan-path-unmentioned", w, a, path and not path["ok"],
                outcome="no path" if path and not path["ok"] else f"path in {path.get('s') if path else '?'} s")
@@ -364,7 +364,7 @@ def wan(args):
             record("lan-path-lan", a, b, path and path["ok"], s=path.get("s") if path else None)
             mentioned_at = time.time()
 
-        print("links and packets across the boundary:", flush=True)
+        print("links and packets across the firewall:", flush=True)
         link_check(record, "lan-link-wan", a, w, args)
         link_check(record, "wan-link-lan", w, a, args)
         packet_check(record, "lan-packet-wan", a, w, args)
@@ -385,7 +385,7 @@ def wan(args):
 
         if b and args.churn:
             # The whitelists hold a bounded number of addresses. Links that
-            # cross the boundary, and a LAN destination that stays quiet,
+            # cross the firewall, and a LAN destination that stays quiet,
             # must survive the LAN mentioning many new ones - including when
             # the WAN side is the first to speak afterwards, before any LAN
             # packet on the link has named it again.

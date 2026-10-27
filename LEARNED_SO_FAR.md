@@ -101,7 +101,7 @@ Working hypothesis from the symptom:
 - `lib/microReticulum/src/Transport.cpp`
   - `Transport::outbound()` returns false when no OUT interface accepts a packet, causing `No interfaces could process the outbound packet`.
   - `path_request()` and immediate PATH_RESPONSE logic are relevant to proof/link return behavior.
-  - FIREWALL_MODE boundary whitelists and local-client interface logic are relevant to TCP -> LoRa return traffic.
+  - FIREWALL_MODE whitelists and local-client interface logic are relevant to TCP -> LoRa return traffic.
 - `tests/lora_test.py`
   - Current hardware tests prove RTNode RX and expose the current RTNode TX decode failure.
 
@@ -114,30 +114,30 @@ Working hypothesis from the symptom:
 ## 2026-05-09 Radio TX Diagnostic Update
 
 - RTNode Heltec V4 auto-detects the front-end module as KCT8103L:
-  - `[Boundary] PA detect: model=KCT8103L`
+  - `[RTNode] PA detect: model=KCT8103L`
 - Restored runtime KCT/GC FEM detection under `FIREWALL_MODE`; the earlier forced-GC1109 diagnostic was wrong for this physical board.
 - Removed the temporary 14 dBm cap and confirmed the full-power mapping:
-  - `[Boundary] TXP: requested=28 effective=28 modem=17 pa=2`
+  - `[RTNode] TXP: requested=28 effective=28 modem=17 pa=2`
 - Added a TX completion diagnostic in `sx126x::endPacket()`:
-  - Startup announce and LoRa path-response transmissions both reported `[Boundary] TXDONE irq=0001 timeout=0 pa=2`.
+  - Startup announce and LoRa path-response transmissions both reported `[RTNode] TXDONE irq=0001 timeout=0 pa=2`.
   - This means the SX1262 reports TX_DONE; RTNode is not just entering `transmit()` and hanging.
 - During a LoRa path request, the standard RNode reported strong interference around the RTNode response window (`-27 dBm`) but still did not decode a packet.
   - This strongly suggests RF is being emitted, but the RNode cannot demodulate the RTNode transmission.
 - Added a non-invasive SX1262 TX profile diagnostic for the next flash:
-  - `[Boundary] SXPA ...` logs PA config, OCP, and SX1262 TX parameter bytes when TX power is set.
-  - `[Boundary] TXCFG ...` logs the active frequency, SF, BW code, CR code, LDRO, preamble, header mode, payload length, CRC, IQ mode, and modem TX power at each transmit.
+  - `[RTNode] SXPA ...` logs PA config, OCP, and SX1262 TX parameter bytes when TX power is set.
+  - `[RTNode] TXCFG ...` logs the active frequency, SF, BW code, CR code, LDRO, preamble, header mode, payload length, CRC, IQ mode, and modem TX power at each transmit.
 - First capture with this diagnostic found a real TX-power application bug:
-  - Boot showed `[Boundary] TXP: requested=28 effective=28 modem=17 pa=2`, but transmit showed `[Boundary] TXCFG ... txp=2` and only `[Boundary] SXPA ... tx=0202`.
+  - Boot showed `[RTNode] TXP: requested=28 effective=28 modem=17 pa=2`, but transmit showed `[RTNode] TXCFG ... txp=2` and only `[RTNode] SXPA ... tx=0202`.
   - Cause: `FIREWALL_MODE` bypassed RNode provisioning and left `model = 0x00`; `Utilities.h::setTXPower()` calculates the mapped power but only applies it in model-specific branches such as `MODEL_C8`.
   - Fixed by setting `model = MODEL_C8` during the Heltec V4 `FIREWALL_MODE` provisioning bypass before `startRadio()`.
-  - Verification after flash showed `[Boundary] SXPA ... tx=1102` and `[Boundary] TXCFG ... txp=17`, so the SX1262 now applies the mapped modem output power.
+  - Verification after flash showed `[RTNode] SXPA ... tx=1102` and `[RTNode] TXCFG ... txp=17`, so the SX1262 now applies the mapped modem output power.
   - A fresh promiscuous RNode sniff after this fix still decoded no RTNode startup packet, so TX power application was a real bug but not the complete demodulation failure.
 - Added another read-only PHY diagnostic for the next flash:
-  - `[Boundary] DIO2RF=1` confirms the SX1262 DIO2 RF-switch opcode is enabled.
-  - `[Boundary] SXFREQ ...` logs the exact RF frequency opcode bytes.
-  - `[Boundary] SXSYNC ...` reads back the SX1262 sync word registers after programming.
+  - `[RTNode] DIO2RF=1` confirms the SX1262 DIO2 RF-switch opcode is enabled.
+  - `[RTNode] SXFREQ ...` logs the exact RF frequency opcode bytes.
+  - `[RTNode] SXSYNC ...` reads back the SX1262 sync word registers after programming.
 - Tried disabling the SX1262 DIO2 RF-switch opcode only for Heltec V4 `FIREWALL_MODE`, while retaining manual KCT CSD/CTX control.
-  - Result: `[Boundary] DIO2RF=0 diagnostic`, valid TXCFG/TXDONE, but the RNode still decoded nothing.
+  - Result: `[RTNode] DIO2RF=0 diagnostic`, valid TXCFG/TXDONE, but the RNode still decoded nothing.
   - Reverted to documented `DIO2RF=1` behavior after the failed diagnostic.
 - Tested these KCT/PA variants with an armed promiscuous RNode sniffer during RTNode boot TX; all still decoded nothing:
   - Correct KCT path, CSD high, CTX high for TX.
@@ -219,14 +219,14 @@ Interpretation:
 - Heltec V3 RTNode was attached at `/dev/cu.usbserial-0001` and flashed with target `rtnode_heltec_v3`.
 - The `FIREWALL_MODE` provisioning-bypass `model = MODEL_C8` fix was extended to Heltec V3 as well as V4, because V3 otherwise leaves `model = 0x00` and `setTXPower()` would calculate but not apply SX1262 TX power.
 - V3 boot/TX diagnostics after flash:
-  - `[Boundary] LoRa: freq=914875000 bw=125000 sf=10 cr=5 txp=22`
-  - `[Boundary] SXSYNC requested=1424 reg=1424`
-  - `[Boundary] DIO2RF=1`
-  - `[Boundary] SXFREQ hz=914875000 reg=392e0000`
-  - `[Boundary] TXP: requested=22 effective=22 modem=22 pa=0`
-  - `[Boundary] SXPA pa=04070001 ocp=18 tx=1602`
-  - `[Boundary] TXCFG ... txp=22`
-  - `[Boundary] TXDONE irq=0001 timeout=0 pa=0`
+  - `[RTNode] LoRa: freq=914875000 bw=125000 sf=10 cr=5 txp=22`
+  - `[RTNode] SXSYNC requested=1424 reg=1424`
+  - `[RTNode] DIO2RF=1`
+  - `[RTNode] SXFREQ hz=914875000 reg=392e0000`
+  - `[RTNode] TXP: requested=22 effective=22 modem=22 pa=0`
+  - `[RTNode] SXPA pa=04070001 ocp=18 tx=1602`
+  - `[RTNode] TXCFG ... txp=22`
+  - `[RTNode] TXDONE irq=0001 timeout=0 pa=0`
 - Hardware test against the standard RNode at `/dev/cu.usbmodem11201`:
   - PASS: V3 RTNode alive/RNS/channel config.
   - PASS: RNode -> V3 RTNode receive, including multiple packet receive test.
@@ -239,10 +239,10 @@ Interpretation:
 - TX power cap diagnostic in `Utilities.h::setTXPower()`:
   - EEPROM requested `txp=28`.
   - Firmware capped effective output to `14` dBm for `BOARD_HELTEC32_V4` + `FIREWALL_MODE`.
-  - Boot log: `[Boundary] TXP: requested=28 effective=14 modem=1 pa=2` for auto-detected KCT8103L.
+  - Boot log: `[RTNode] TXP: requested=28 effective=14 modem=1 pa=2` for auto-detected KCT8103L.
   - Result: no improvement; LoRa client still did not learn the path.
 - Forced GC1109 FEM path diagnostic in `sx126x.cpp`:
-  - Boot log: `[Boundary] PA diagnostic: forcing GC1109 path` and `pa=1`.
+  - Boot log: `[RTNode] PA diagnostic: forcing GC1109 path` and `pa=1`.
   - Result: no improvement; LoRa client still did not learn the path.
 - Disabled the fork's SX1262 IQ-register write after `SetPacketParams`:
   - The fork wrote register `0x0736` after every packet-params update; upstream RNode firmware does not.
@@ -289,8 +289,8 @@ Current diagnostic firmware state:
   - Result: no KISS `CMD_DATA` frames decoded by the Wio during the old V3 boot/TX window.
 - Full-flashed exact mirrored release image `docs/firmware/v1.0.29/rtnode_heltec_v3_merged.bin` to `/dev/cu.usbserial-0001` at offset `0x0`.
   - Hash verified, but after reset the device entered setup portal mode:
-    - `[Boundary] RTNode app marker missing — previous firmware was not RTNode or config is unclaimed`
-    - `[Boundary] Starting config portal to migrate settings into RTNode`
+    - `[RTNode] RTNode app marker missing — previous firmware was not RTNode or config is unclaimed`
+    - `[RTNode] Starting config portal to migrate settings into RTNode`
     - `[Config] AP started: RTNode-Setup`
   - Result: invalid as a LoRa decode test because normal RNS/LoRa did not start.
 - App-flashed exact mirrored release image `docs/firmware/v1.0.29/rtnode_heltec_v4.bin` to V4 at offset `0x10000`, preserving the V4 config/filesystem.
@@ -497,9 +497,9 @@ Reverse direction, V4.3 -> V4.2:
 - Post-upload note:
   - `extra_script.py` still skips post-upload `rnodeconf` provisioning/hash steps, which is expected and appropriate for RTNode `FIREWALL_MODE`
 - Short boot/runtime capture from `/dev/cu.usbmodem11101` confirmed RTNode is running again:
-  - `[Boundary] Provisioning check bypassed, modem installed`
-  - `[Boundary] No LoRa config in EEPROM, using defaults`
-  - `[Boundary] LoRa: freq=914875000 bw=125000 sf=10 cr=5 txp=28`
+  - `[RTNode] Provisioning check bypassed, modem installed`
+  - `[RTNode] No LoRa config in EEPROM, using defaults`
+  - `[RTNode] LoRa: freq=914875000 bw=125000 sf=10 cr=5 txp=28`
   - `Starting RNS...`
   - `Transport mode is enabled`
   - `[TcpIF] Server listening on port 4242`
@@ -537,7 +537,7 @@ Reverse direction, V4.3 -> V4.2:
   - LoRa client sent payload length `24`
   - LoRa client received delivery proof with `CLIENT_DELIVERED rtt=2.807s`
   - TCP-side server logged `SERVER_RX side=tcp len=24 ... from=TCPInterface[RTNode TCP/mynode.local:4242]`
-- RTNode serial capture during the pass showed the expected boundary/proof path:
+- RTNode serial capture during the pass showed the expected firewall/proof path:
   - stored the TCP-side announce locally: `[PATH] STORED dst=6d9b8639 hops=0 iface=Interface[LocalTcpInterface]`
   - answered the incoming LoRa path request: `[PATH] REQ dst=6d9b8639 from=Interface[LoRaInterface]` followed by `[PATH] RESP dst=6d9b8639 hops=0 to=Interface[LoRaInterface] local=0`
   - received the LoRa-side payload over LoRa: `[LoRa] RX 131 bytes`
@@ -568,7 +568,7 @@ Reverse direction, V4.3 -> V4.2:
   - transported the returning proof back from LoRa to the LAN TCP client: `[PROOF] XPORT dst=ae08e296 data=64 hops=1 recv=Interface[LoRaInterface] out=Interface[LocalTcpInterface]`
 - Updated interpretation:
   - The mixed announce/access path is now confirmed in both directions on the restored RTNode + standard-RNode split.
-  - The earlier cross-boundary proof failure is no longer reproducing in either direction with `tests/proof_probe.py`.
+  - The earlier proof failure between the LoRa and TCP sides is no longer reproducing in either direction with `tests/proof_probe.py`.
 
 ## 2026-05-10 Pure LAN TCP -> TCP by Direct IP PASS
 
@@ -598,7 +598,7 @@ Reverse direction, V4.3 -> V4.2:
     - `4f0501d0fe9669610d37f5e163eba3cc`
   - WAN flood script also sent twenty random path requests over LoRa
 - Important filter verdict from RTNode's own monitor log:
-  - there were no `BOUNDARY: BLOCKED unsolicited backbone announce` lines in `tests/filter_stress_rtnode_serial.log`
+  - there were no `BLOCKED unsolicited backbone announce` lines in `tests/filter_stress_rtnode_serial.log`
   - instead, RTNode accepted and stored all four unsolicited WAN announces, for example:
     - `[ANNC] IN dst=c35fc03c valid=1 ctx=0 hops=1 iface=Interface[LoRaInterface]`
     - `[PATH] STORED dst=c35fc03c hops=1 iface=Interface[LoRaInterface]`
@@ -621,7 +621,7 @@ Reverse direction, V4.3 -> V4.2:
 - Updated interpretation:
   - The current firmware preserves communication with the LAN-side TCP destination even after a WAN-side flood, though path discovery is slower under load.
   - The current firmware does not appear to enforce the intended unsolicited-WAN announce block yet; the flood announces were accepted into RTNode state and surfaced to the LAN TCP endpoint.
-  - WAN-side random path requests were tolerated rather than blocked at the boundary, so the filter behavior is still weaker than the intended design in `CORE_PRINCIPLES.md`.
+  - WAN-side random path requests were tolerated rather than blocked at the firewall, so the filter behavior is still weaker than the intended design in `CORE_PRINCIPLES.md`.
 
 ## 2026-05-10 Firewall Root Cause, Two-Step Fix, and Final Hardware Validation PASS
 
@@ -630,7 +630,7 @@ Reverse direction, V4.3 -> V4.2:
   - The old firewall logic treated "non-backbone" as trusted, so LoRa/WAN traffic could grow the whitelist and store unsolicited announces.
   - `Transport::path_request()` also allowed unknown path requests from untrusted LoRa ingress to search and leak toward local TCP clients.
 - First firmware fix that was built, flashed, and validated on hardware:
-  - introduced trusted/untrusted boundary helpers based on `Transport::is_local_client_interface()`
+  - introduced trusted/untrusted firewall helpers based on `Transport::is_local_client_interface()`
   - applied the inbound whitelist gate to untrusted ingress, which includes LoRa in this runtime setup
   - restricted whitelist growth and unknown-path discovery so unsolicited LoRa announces were no longer stored and random unknown LoRa path requests no longer reached the LAN TCP proof server
   - preserved valid post-flood access: LoRa postcheck client still reached the LAN TCP server and received proof
@@ -639,8 +639,8 @@ Reverse direction, V4.3 -> V4.2:
   - LAN TCP proof server no longer learned those WAN flood destinations and no longer logged the random path requests
   - however, `bma` still climbed during the random WAN path-request flood because the "mentioned" set was still learning non-address identifiers such as the control destination and proof hashes
 - Final refinement requested by user and validated on hardware:
-  - tightened whitelist growth so WAN flood control hashes were no longer entering boundary state
-  - that intermediate implementation used `is_boundary_address_packet(packet)` to avoid learning plain control destinations and proof packet hashes from WAN flood traffic
+  - tightened whitelist growth so WAN flood control hashes were no longer entering the whitelists
+  - that intermediate implementation used a per-packet helper to avoid learning plain control destinations and proof packet hashes from WAN flood traffic
   - this helper-based narrowing was later superseded by the simpler destination-centric contract documented below: every destination the LAN mentions is whitelisted, and path requests whitelist their payload target rather than the `path.request` wrapper hash
 - Final hardware validation on the refined firmware:
   - LAN TCP proof server hash: `703d29c1883e35f48c25beef9ee00b89`
@@ -660,10 +660,10 @@ Reverse direction, V4.3 -> V4.2:
 - Final interpretation:
   - unsolicited LoRa/WAN announces are no longer being admitted into RTNode path state
   - random unknown LoRa/WAN path requests no longer leak to LAN TCP clients
-  - the boundary whitelist no longer grows from WAN flood control/proof identifiers
+  - the firewall whitelist no longer grows from WAN flood control/proof identifiers
   - valid LoRa-to-LAN access still works after the flood, which is the required behavior for the two-whitelist policy
 
-## 2026-05-10 Boundary Whitelist Rule Simplified And Hardened
+## 2026-05-10 Firewall Whitelist Rule Simplified And Hardened
 
 - The durable rule is now: every destination the LAN mentions goes in the whitelist.
 - The firewall must key that rule to the real destination referenced by the packet, not blindly to `packet.destination_hash()` when the packet is only a wrapper around another destination.
@@ -718,7 +718,7 @@ Reverse direction, V4.3 -> V4.2:
   - the remaining failures are not evidence of a new Reticulum regression in RTNode path handling
   - to complete the mixed and WAN scenario execution, the standard RNode peer must be reattached or the harness must be rerun with the current correct LoRa device path
 
-## 2026-05-10 Final Orchestrated Pass After Reattach and Boundary Response Fixes
+## 2026-05-10 Final Orchestrated Pass After Reattach and Firewall Response Fixes
 
 - Reattached hardware state:
   - RTNode remained on `/dev/cu.usbmodem11101`
@@ -776,5 +776,5 @@ Reverse direction, V4.3 -> V4.2:
     - `CLIENT_DELIVERED rtt=2.952s`
 - Final interpretation:
   - the orchestrator is now valid for all four requested scenarios on current hardware
-  - strict boundary filtering still holds
+  - strict firewall filtering still holds
   - both WAN discovery from LAN and WAN access into LAN are now working on the patched RTNode firmware

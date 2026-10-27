@@ -308,7 +308,7 @@ namespace RNS { namespace Type {
 			MODE_POINT_TO_POINT = 0x04,
 			MODE_ACCESS_POINT   = 0x08,
 			MODE_ROAMING        = 0x10,
-			MODE_BOUNDARY       = 0x20,
+			MODE_BACKBONE       = 0x20,
 			MODE_GATEWAY        = 0x40,
 		};
 

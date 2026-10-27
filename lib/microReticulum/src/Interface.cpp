@@ -9,7 +9,7 @@
 using namespace RNS;
 using namespace RNS::Type::Interface;
 
-/*static*/ uint8_t Interface::DISCOVER_PATHS_FOR = MODE_FULL | MODE_ACCESS_POINT | MODE_GATEWAY | MODE_BOUNDARY | MODE_ROAMING;
+/*static*/ uint8_t Interface::DISCOVER_PATHS_FOR = MODE_FULL | MODE_ACCESS_POINT | MODE_GATEWAY | MODE_BACKBONE | MODE_ROAMING;
 
 void Interface::setup_ifac(const char* ifac_netname, const char* ifac_netkey) {
 	assert(_impl);

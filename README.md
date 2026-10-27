@@ -181,7 +181,7 @@ The config portal activates automatically on:
 - **First boot** — when no saved configuration exists
 - **Button hold >5 seconds** — hold the PRG button for 5+ seconds, the device reboots into config mode
 
-When active, the device creates a WiFi access point named **`RNode-Boundary-Setup`** (open network). A captive portal should appear automatically when you connect; if not, browse to `http://192.168.4.1`.
+When active, the device creates a WiFi access point named **`RTNode-Setup`** (open network). A captive portal should appear automatically when you connect; if not, browse to `http://192.168.4.1`.
 
 ### Config Page Options
 
@@ -316,7 +316,7 @@ is configured.
 
 When both WiFi and the local TCP server are enabled, a TCP server on the WiFi network allows local Reticulum nodes to connect. Announces are forwarded freely to and from local TCP clients (matching standard Reticulum transport node behaviour). Also registered as a local-client interface so Transport forwards announces, link packets, and proofs to connected clients.
 
-Local TCP clients should be endpoint clients, not transport routers. If an application such as Meshchat is configured with Reticulum transport mode enabled, it can relay WAN-scale traffic into RTNode through the LAN side, even when RTNode's own WAN/backbone interface is disabled. That defeats the boundary model and can fill routing/cache state from the trusted side. Disable transport mode on Meshchat/Reticulum clients connected to the Local TCP Server unless you are intentionally testing bounded LAN-side transport behavior.
+Local TCP clients should be endpoint clients, not transport routers. If an application such as Meshchat is configured with Reticulum transport mode enabled, it can relay WAN-scale traffic into RTNode through the LAN side, even when RTNode's own WAN/backbone interface is disabled. That defeats the firewall model and can fill routing/cache state from the trusted side. Disable transport mode on Meshchat/Reticulum clients connected to the Local TCP Server unless you are intentionally testing bounded LAN-side transport behavior.
 
 **Implementation details:**
 - Each TCP interface must have a **unique name** to produce a unique interface hash — the backbone uses `"TcpInterface"` and the local server uses `"LocalTcpInterface"`. Without distinct names, both interfaces produce the same hash, causing the interface map lookup to fail when routing packets.
@@ -450,9 +450,9 @@ The firmware depends on [microReticulum](https://github.com/attermann/microRetic
 | File | Changes |
 |------|---------|
 | `Transport.cpp` | Selective caching, default route forwarding, transport-aware culling, `get_cached_packet()` unpack fix, path table `erase()+insert()` fix, memory limits |
-| `Transport.h` | `MODE_BOUNDARY`, `PacketEntry`, `Callbacks`, `cull_path_table()`, configurable table sizes |
+| `Transport.h` | `MODE_BACKBONE`, `PacketEntry`, `Callbacks`, `cull_path_table()`, configurable table sizes |
 | `Identity.cpp` | `_known_destinations_maxsize` = 24, `cull_known_destinations()` |
-| `Type.h` | `MODE_BOUNDARY` = 0x20, reduced `MAX_QUEUED_ANNOUNCES`, `MAX_RECEIPTS`, shorter timeouts |
+| `Type.h` | `MODE_BACKBONE` = 0x20, reduced `MAX_QUEUED_ANNOUNCES`, `MAX_RECEIPTS`, shorter timeouts |
 
 ### Memory Usage (typical, V4)
 
