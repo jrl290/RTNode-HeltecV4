@@ -491,12 +491,22 @@ image with no Ethernet override, so Ethernet followed the portal's switch.
 - **Bluetooth was turned on in the portal.** The BLE indicator showed
   hollow, with no peer.
 
+- **Test 9, Bluetooth while the cable carries traffic (10-26 20:23–20:37).**
+  Pass.
+  - James turned off the other RTNode near the M5. The Pixel's Retichat
+    (0.1.15) then dialled this node (address D7:78:6C:10:2C:C4, RSSI −74
+    from the M5) and its link settled in 3.2 s. Its identity matches this
+    node's probe destination.
+  - From the M1 over the cable, a path request reached the Pixel's
+    destination two hops away, through this node.
+  - An LXMF message sent over the cable, as a direct link, reached Retichat
+    over Bluetooth in 0.6 s, with its link and delivery proofs coming back
+    the same way. A second one after the load period also took 0.6 s.
+  - Over 13 minutes, with 300-byte probes every 0.2 s on the cable (1,695
+    replies, none lost, 106 ms median, 225 ms worst), the Bluetooth link
+    never dropped or redialled. Free memory stayed flat.
+
 Not yet run:
-- **Test 9, Bluetooth while the cable carries traffic.** The Pixel on the
-  M5 runs Retichat, which links to one RTNode in range, and it's already
-  linked to another RTNode near the M5, not to this one. This needs a peer
-  that can be pointed at this node, or the other node's Bluetooth off for
-  the test.
 - **The staging soak.** Running since 10-26 19:43 EDT for 24 hours, on the
   dock, backbone to the staging Pi (192.168.2.107:4242), with WiFi and the
   cable both up. The M1 records the network log and checks it every 10
