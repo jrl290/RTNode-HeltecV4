@@ -1,6 +1,6 @@
 // EthernetUsbDriver.h — the C side of wired Ethernet through a USB adapter
 // (CDC-ECM), implemented in lib/CherryUSB/rtnode/eth_usb.c. EthernetUsb.h is
-// what the firmware uses; this is the boundary to the USB library.
+// what the firmware uses; this is its interface to the USB library.
 //
 // It is a project header, not one of the library's, on purpose: PlatformIO's
 // dependency finder would otherwise build the library for every board that

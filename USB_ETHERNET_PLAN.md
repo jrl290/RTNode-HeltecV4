@@ -264,7 +264,7 @@ this boot) and `eth_up` (link up with an address), set by `EthernetUsb.h`.
 
 Only the V4 builds draw it (`RTNODE_ETH_USB`), as only they draw BLE
 (`RTNODE_BLE`).
-- `boundary_needs_config()` (`FirewallConfig.h:965`) needs no change: after
+- `firewall_needs_config()` (`FirewallConfig.h:965`) needs no change: after
   the first save the firewall flag is set, so an Ethernet-only node with no
   SSID isn't sent back to the portal.
 
