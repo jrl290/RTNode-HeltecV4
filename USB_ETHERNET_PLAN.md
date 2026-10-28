@@ -506,11 +506,18 @@ image with no Ethernet override, so Ethernet followed the portal's switch.
     replies, none lost, 106 ms median, 225 ms worst), the Bluetooth link
     never dropped or redialled. Free memory stayed flat.
 
-Not yet run:
-- **The staging soak.** Running since 10-26 19:43 EDT for 24 hours, on the
-  dock, backbone to the staging Pi (192.168.2.107:4242), with WiFi and the
-  cable both up. The M1 records the network log and checks it every 10
-  minutes.
+- **The staging soak (10-26 19:43 → 10-27 19:43 EDT).** Pass. 24 hours on
+  the dock, backbone to the staging Pi (192.168.2.107:4242), with WiFi and
+  the cable both up. The M1 recorded the network log and checked it every
+  10 minutes; all 145 checks were clean:
+  - one boot, no watchdog restart;
+  - one backbone connection, held throughout;
+  - the cable never lost;
+  - free memory flat at 174–176 KB;
+  - the log never quiet for more than 56 s.
+
+The stalled-adapter send ceiling in test 5 was not exercised; James (10-27)
+doesn't need it tested. Every other test has run and passed.
 
 Nothing moves a backbone back to the cable when the cable returns. A
 backbone that moved to WiFi stays there until its connection drops for some
