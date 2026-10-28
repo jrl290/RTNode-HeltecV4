@@ -4,26 +4,16 @@
 //
 //  A GATT peripheral speaking two protocols on one service, and advertising
 //  ble-reticulum v0.3.0's peripheral-only flag so that centrals connect to
-//  us and RTNode never has to connect out:
+//  us and RTNode never has to connect out. The protocols are other
+//  projects' work, each in its own file under its authors' license:
 //
-//    service   37145b00-442d-4a94-917f-8f42c5da28e3
-//    TX  …e4   read, notify   Columba: us → central, fragments
-//    RX  …e5   write          Columba: central → us, identity then fragments
-//    ID  …e6   read           Columba: our 16-byte transport identity hash
-//    CTL …e7   write, notify  Prns: Hello → Welcome (or Close)
-//    DAT …e8   write, write without response, notify  Prns: fragments, both ways
+//    BleColumba.h  ble-reticulum's protocol, as Columba phones speak it
+//                  (torlando-tech, MIT): the service, TX/RX/ID, fragments
+//    BlePrns.h     the Prns native protocol (The Prns Authors, MIT OR
+//                  Apache-2.0): CTL/DAT, Hello/Welcome/Close
 //
-//  Columba (ble-reticulum v2.2, 07d9413, as pinned by Columba 2.2.6): a
-//  central's first write of exactly 16 bytes to RX is its identity; a 1-byte
-//  0x00 is a keepalive, and both sides send one every 15 s when idle —
-//  Columba 1.x (reticulum-kt) drops a peer it has heard nothing from for 45 s. Prns (d48e9fc, prns-core bluetooth_auto): the
-//  central writes a 23-byte Hello to CTL — [01][identity 16][endpoint 2]
-//  [L2CAP PSM][link MTU u16 BE][RSSI] — and we answer Welcome ([02], ours)
-//  by notification, or Close [03][reason] if it is our own identity. A
-//  central that finds CTL uses Prns's protocol, otherwise Columba's. Both
-//  frame data the same way: [type][sequence u16 BE][total u16 BE][data],
-//  type 01 start, 02 continue, 03 end; a one-fragment packet is 01 with
-//  total 1.
+//  This file is RTNode's own (GPL-3.0): the slots, NimBLE, the queues, the
+//  link speed and the Reticulum interfaces.
 //
 //  Each peer holds one of BLE_SLOTS fixed slots, and each slot is its own
 //  Reticulum interface, registered at boot and online while its peer is
@@ -73,31 +63,13 @@
 #undef MTU
 #include <NimBLEDevice.h>
 #pragma pop_macro("MTU")
+#include "BleColumba.h"
+#include "BlePrns.h"
 
 namespace ble {
 
-static const char* SERVICE_UUID  = "37145b00-442d-4a94-917f-8f42c5da28e3";
-static const char* TX_UUID       = "37145b00-442d-4a94-917f-8f42c5da28e4";
-static const char* RX_UUID       = "37145b00-442d-4a94-917f-8f42c5da28e5";
-static const char* IDENTITY_UUID = "37145b00-442d-4a94-917f-8f42c5da28e6";
-static const char* CONTROL_UUID  = "37145b00-442d-4a94-917f-8f42c5da28e7";
-static const char* DATA_UUID     = "37145b00-442d-4a94-917f-8f42c5da28e8";
-
-// Prns control messages (prns-core bluetooth_auto/handshake.rs).
-static const uint8_t  CONTROL_HELLO   = 0x01;
-static const uint8_t  CONTROL_WELCOME = 0x02;
-static const uint8_t  CONTROL_CLOSE   = 0x03;
-static const uint8_t  CLOSE_SELF_CONNECTION = 0x01;
-static const size_t   GREETING_LEN    = 23;
-static const uint8_t  ENDPOINT_ESP32[2] = {0x05, 0x00};
-static const uint16_t PRNS_LINK_MTU   = 500;
-static const uint8_t  RSSI_UNKNOWN    = 0x80;
-
-static const uint8_t  FRAG_START    = 0x01;
-static const uint8_t  FRAG_CONTINUE = 0x02;
-static const uint8_t  FRAG_END      = 0x03;
-static const size_t   FRAG_HEADER   = 5;
-static const size_t   IDENTITY_LEN  = 16;
+static const size_t   IDENTITY_LEN  = columba::IDENTITY_LEN;
+static_assert(prns::IDENTITY_LEN == IDENTITY_LEN, "both protocols identify a peer by 16 bytes");
 static const size_t   VALUE_MAX     = 512;   // largest attribute value
 static const uint16_t PACKET_MAX    = 512;   // Reticulum packets are ≤ 500
 static const int      SLOTS         = CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
@@ -121,11 +93,8 @@ static const uint16_t TIMEOUT_MIN   = 200;   // 2 s, in 10 ms units
 static const uint16_t TIMEOUT_MAX   = 600;   // 6 s
 static const uint16_t LL_OCTETS_MAX = 251;   // Data Length Extension's largest payload
 static const uint16_t LL_TIME_MAX   = 2120;  // µs for 251 octets on the 1M PHY
-static const uint32_t KEEPALIVE_EVERY_MS = 15000;   // Columba's CONNECTION_KEEPALIVE_INTERVAL_MS
 static const uint16_t ADV_INTERVAL_MIN = 160;   // 100 ms, in 0.625 ms units
 static const uint16_t ADV_INTERVAL_MAX = 240;   // 150 ms
-// v0.3.0 manufacturer data: company 0xFFFF (little-endian), version 3, flags.
-static const uint8_t  ADV_FLAG_PERIPHERAL_ONLY = 0x01;
 
 // ─── Events from the NimBLE host task ────────────────────────────────────────
 enum ControlKind : uint8_t { CONTROL_CONNECT, CONTROL_DISCONNECT, CONTROL_MTU, CONTROL_PARAMS, CONTROL_PHY };
@@ -159,7 +128,7 @@ public:
         _OUT = true;
         _HW_MTU = 500;
         _FIXED_MTU = true;
-        _bitrate = 700000;   // Columba's BLEInterface.BITRATE_GUESS
+        _bitrate = columba::BITRATE_GUESS;   // Prns's figure too
     }
 
     enum Protocol : uint8_t { PROTOCOL_COLUMBA, PROTOCOL_PRNS };
@@ -418,25 +387,27 @@ inline void start() {
     NimBLEDevice::setCustomGapHandler(on_gap_event);
 
     NimBLEServer* server = NimBLEDevice::createServer();
-    NimBLEService* service = server->createService(SERVICE_UUID);
-    tx_char = service->createCharacteristic(TX_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+    NimBLEService* service = server->createService(columba::SERVICE_UUID);
+    // Columba's characteristics (BleColumba.h).
+    tx_char = service->createCharacteristic(columba::TX_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     NimBLECharacteristic* rx_char =
-        service->createCharacteristic(RX_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
+        service->createCharacteristic(columba::RX_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
     rx_char->setCallbacks(&rx_callbacks);
-    NimBLECharacteristic* id_char = service->createCharacteristic(IDENTITY_UUID, NIMBLE_PROPERTY::READ);
+    NimBLECharacteristic* id_char = service->createCharacteristic(columba::IDENTITY_UUID, NIMBLE_PROPERTY::READ);
     id_char->setValue(our_identity, IDENTITY_LEN);
-    control_char = service->createCharacteristic(CONTROL_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
+    // Prns's (BlePrns.h).
+    control_char = service->createCharacteristic(prns::CONTROL_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
     control_char->setCallbacks(&control_callbacks);
-    data_char = service->createCharacteristic(DATA_UUID,
+    data_char = service->createCharacteristic(prns::DATA_UUID,
                                               NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY);
     data_char->setCallbacks(&data_callbacks);
     service->start();
 
     NimBLEAdvertisementData data;
     data.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
-    data.setCompleteServices(NimBLEUUID(SERVICE_UUID));
-    const uint8_t manufacturer[4] = {0xFF, 0xFF, 0x03, ADV_FLAG_PERIPHERAL_ONLY};
-    data.setManufacturerData(std::string((const char*)manufacturer, sizeof(manufacturer)));
+    data.setCompleteServices(NimBLEUUID(columba::SERVICE_UUID));
+    data.setManufacturerData(std::string((const char*)columba::ADV_MANUFACTURER_DATA,
+                                         sizeof(columba::ADV_MANUFACTURER_DATA)));
     NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
     advertising->setAdvertisementData(data);
     advertising->setScanResponse(false);
@@ -544,8 +515,7 @@ static void on_identity(int index, const uint8_t* identity, BlePeerInterface::Pr
     if (memcmp(identity, our_identity, IDENTITY_LEN) == 0) {
         self_connections++;
         if (protocol == BlePeerInterface::PROTOCOL_PRNS) {
-            const uint8_t close[2] = {CONTROL_CLOSE, CLOSE_SELF_CONNECTION};
-            notify(slot->conn, control_char, close, sizeof(close));
+            notify(slot->conn, control_char, prns::CLOSE_SELF, sizeof(prns::CLOSE_SELF));
         }
         NimBLEDevice::getServer()->disconnect(slot->conn);
         return;
@@ -568,26 +538,20 @@ static void on_identity(int index, const uint8_t* identity, BlePeerInterface::Pr
     request_fast_link(slot);
 }
 
-// A Prns Hello, answered with our Welcome.
+// A Prns Hello, answered with our Welcome (BlePrns.h).
 static void on_control(int index, const uint8_t* data, size_t len) {
     BlePeerInterface* slot = slots[index];
-    if (len >= 2 && data[0] == CONTROL_CLOSE) {
+    if (prns::is_close(data, len)) {
         NimBLEDevice::getServer()->disconnect(slot->conn);
         return;
     }
-    if (slot->identified || len < GREETING_LEN || data[0] != CONTROL_HELLO) {
+    if (slot->identified || !prns::is_hello(data, len)) {
         slot->bad_control++;
         return;
     }
-    uint8_t welcome[GREETING_LEN];
-    welcome[0] = CONTROL_WELCOME;
-    memcpy(welcome + 1, our_identity, IDENTITY_LEN);
-    memcpy(welcome + 1 + IDENTITY_LEN, ENDPOINT_ESP32, sizeof(ENDPOINT_ESP32));
-    welcome[19] = 0x00;                    // no L2CAP channel
-    welcome[20] = PRNS_LINK_MTU >> 8;
-    welcome[21] = PRNS_LINK_MTU & 0xFF;
-    welcome[22] = RSSI_UNKNOWN;
-    const uint8_t* identity = data + 1;
+    uint8_t welcome[prns::GREETING_LEN];
+    prns::write_welcome(welcome, our_identity);
+    const uint8_t* identity = prns::hello_identity(data);
     if (memcmp(identity, our_identity, IDENTITY_LEN) != 0 && !notify(slot->conn, control_char, welcome, sizeof(welcome))) {
         // The Welcome could not go out, so the link would never settle.
         slot->notify_errors++;
@@ -610,12 +574,12 @@ static void on_write(const WriteEvent& write) {
         on_control(index, data, len);
         return;
     }
-    if (len == 1 && data[0] == 0x00) {
+    if (columba::is_keepalive(data, len)) {
         slot->keepalives++;
         return;
     }
     if (!slot->identified) {
-        if (write.channel == CHANNEL_COLUMBA_RX && len == IDENTITY_LEN) {
+        if (write.channel == CHANNEL_COLUMBA_RX && columba::is_identity(len)) {
             on_identity(index, data, BlePeerInterface::PROTOCOL_COLUMBA);
         }
         else {
@@ -630,27 +594,26 @@ static void on_write(const WriteEvent& write) {
         slot->bad_fragments++;
         return;
     }
-    if (len < FRAG_HEADER) {
+    if (len < columba::FRAG_HEADER) {
         slot->bad_fragments++;
         return;
     }
-    uint8_t  type  = data[0];
-    uint16_t seq   = ((uint16_t)data[1] << 8) | data[2];
-    uint16_t total = ((uint16_t)data[3] << 8) | data[4];
-    const uint8_t* payload = data + FRAG_HEADER;
-    size_t payload_len = len - FRAG_HEADER;
-    if (type < FRAG_START || type > FRAG_END || total == 0 || seq >= total) {
+    // Both protocols frame fragments as ble-reticulum does (BleColumba.h).
+    columba::Fragment fragment;
+    if (!columba::read_fragment(data, len, &fragment)) {
         slot->bad_fragments++;
         slot->rx_active = false;
         return;
     }
-    if (seq == 0) {
+    const uint8_t* payload = data + columba::FRAG_HEADER;
+    size_t payload_len = len - columba::FRAG_HEADER;
+    if (fragment.seq == 0) {
         slot->rx_len = 0;
-        slot->rx_total = total;
+        slot->rx_total = fragment.total;
         slot->rx_next = 0;
         slot->rx_active = true;
     }
-    else if (!slot->rx_active || total != slot->rx_total || seq != slot->rx_next) {
+    else if (!slot->rx_active || fragment.total != slot->rx_total || fragment.seq != slot->rx_next) {
         // GATT delivers one link's writes in order, so a gap means a lost
         // write (write_drops) or a confused peer; drop the packet.
         slot->bad_fragments++;
@@ -680,22 +643,16 @@ static bool send_next_fragment(BlePeerInterface* slot) {
     if (usable > VALUE_MAX) usable = VALUE_MAX;
 #ifdef RTNODE_BLE_CHUNK_MAX
     // Bench only: small fragments, to exercise a peer's reassembly.
-    if (usable > RTNODE_BLE_CHUNK_MAX + FRAG_HEADER) usable = RTNODE_BLE_CHUNK_MAX + FRAG_HEADER;
+    if (usable > RTNODE_BLE_CHUNK_MAX + columba::FRAG_HEADER) usable = RTNODE_BLE_CHUNK_MAX + columba::FRAG_HEADER;
 #endif
-    size_t chunk = usable - FRAG_HEADER;
+    size_t chunk = usable - columba::FRAG_HEADER;
     if (slot->tx_seq == 0) slot->tx_total = (packet.len + chunk - 1) / chunk;
     size_t offset = (size_t)slot->tx_seq * chunk;
     size_t n = packet.len - offset < chunk ? packet.len - offset : chunk;
-    uint8_t type = slot->tx_seq == 0 ? FRAG_START
-                 : (slot->tx_seq == slot->tx_total - 1 ? FRAG_END : FRAG_CONTINUE);
-    fragment[0] = type;
-    fragment[1] = slot->tx_seq >> 8;
-    fragment[2] = slot->tx_seq & 0xFF;
-    fragment[3] = slot->tx_total >> 8;
-    fragment[4] = slot->tx_total & 0xFF;
-    memcpy(fragment + FRAG_HEADER, packet.data + offset, n);
+    columba::write_fragment_header(fragment, slot->tx_seq, slot->tx_total);
+    memcpy(fragment + columba::FRAG_HEADER, packet.data + offset, n);
 
-    os_mbuf* om = ble_hs_mbuf_from_flat(fragment, FRAG_HEADER + n);
+    os_mbuf* om = ble_hs_mbuf_from_flat(fragment, columba::FRAG_HEADER + n);
     if (!om) {
         slot->enomem++;
         return false;
@@ -814,9 +771,8 @@ inline void loop() {
             for (int n = 0; n < FRAGMENTS_PER_PASS && slot->tx_count > 0 && send_next_fragment(slot); n++) {}
         }
         else if (slot->protocol == BlePeerInterface::PROTOCOL_COLUMBA &&
-                 now_ms - slot->last_sent_ms >= KEEPALIVE_EVERY_MS) {
-            static const uint8_t keepalive = 0x00;
-            if (notify(slot->conn, tx_char, &keepalive, 1)) {
+                 now_ms - slot->last_sent_ms >= columba::KEEPALIVE_EVERY_MS) {
+            if (notify(slot->conn, tx_char, &columba::KEEPALIVE, 1)) {
                 slot->keepalives_sent++;
                 slot->last_sent_ms = now_ms;
             }

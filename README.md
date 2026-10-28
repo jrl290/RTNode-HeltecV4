@@ -212,6 +212,8 @@ The web form's sections include:
 |-------|-------------|
 | **Bluetooth Peers** | Enable/Disable — lets phones running [Columba](https://github.com/torlando-tech/columba), and Prns nodes, join the local network over Bluetooth LE, up to four at a time. **Enabled by default.** Bluetooth peers are LAN-side, trusted like LoRa; takes effect after a restart and uses about 70 KB of memory while on. Needs the board's PSRAM: on V4 boards with 8 MB octal PSRAM, whose PSRAM this build does not start yet, Bluetooth stays off and the page says so |
 
+Bluetooth peers speak one of two protocols, both other projects' work: the native protocol of [Prns](https://github.com/KenAKAFrosty/Prns), by The Prns Authors, which Prns nodes and Retichat phones use ([`BlePrns.h`](BlePrns.h)), and the protocol of [ble-reticulum](https://github.com/torlando-tech/ble-reticulum), by torlando-tech, which Columba phones use ([`BleColumba.h`](BleColumba.h)). See [License](#license).
+
 #### 📻 LoRa Radio
 | Field | Description |
 |-------|-------------|
@@ -463,6 +465,10 @@ The firmware depends on [microReticulum](https://github.com/attermann/microRetic
 ## License
 
 This project is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE) for details.
+
+Two files implement other projects' Bluetooth LE protocols and keep those projects' licenses, which GPL-3.0 allows:
+- [`BlePrns.h`](BlePrns.h) — the native protocol of [Prns](https://github.com/KenAKAFrosty/Prns), the work of The Prns Authors (MIT OR Apache-2.0, see [licenses/Prns-LICENSE-MIT](licenses/Prns-LICENSE-MIT) and [licenses/Prns-LICENSE-APACHE](licenses/Prns-LICENSE-APACHE)).
+- [`BleColumba.h`](BleColumba.h) — the protocol of [ble-reticulum](https://github.com/torlando-tech/ble-reticulum) by torlando-tech (MIT, see [licenses/ble-reticulum-LICENSE](licenses/ble-reticulum-LICENSE)), as [Columba](https://github.com/torlando-tech/columba) speaks it. RTNode also follows Columba's 15-second keepalive; no Columba code is used.
 
 Based on:
 - [RNode Firmware](https://github.com/markqvist/RNode_Firmware) by Mark Qvist (GPL-3.0)
