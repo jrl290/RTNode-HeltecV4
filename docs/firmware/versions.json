@@ -1,5 +1,20 @@
 [
   {
+    "tag": "v1.0.54",
+    "name": "v1.0.54 \u2014 Ethernet through a USB adapter (experimental), Reticulum layer rewritten from a description",
+    "stability": "beta",
+    "prerelease": false,
+    "published_at": "2026-10-28T00:00:00Z",
+    "assets": [
+      "rtnode_heltec_v3.bin",
+      "rtnode_heltec_v3_merged.bin",
+      "rtnode_heltec_v4.bin",
+      "rtnode_heltec_v4_merged.bin",
+      "rtnode_heltec_v4_r8.bin",
+      "rtnode_heltec_v4_r8_merged.bin"
+    ]
+  },
+  {
     "tag": "v1.0.53",
     "name": "v1.0.53 \u2014 Fix for reboots with WiFi or Bluetooth on, LoRa announce cap",
     "stability": "beta",
