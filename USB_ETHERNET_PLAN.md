@@ -1,0 +1,547 @@
+# Wired Ethernet through a USB adapter: plan
+
+Read with [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md),
+[PERFORMANCE_STRATEGY.md](PERFORMANCE_STRATEGY.md) and the workspace
+`DESIGN_PRINCIPLES.md`.
+
+Written 2026-10-25. This is a plan only: no firmware is changed yet. Work
+starts after the v1.0.53 release and after the `behaviour-rewrite` branch is
+merged. That branch barely touches the files below (it changes how
+`TcpInterface.h` gates incoming announces, not when it connects).
+
+## What it adds
+
+On the Heltec V4 and V4 R8, the USB-C port can take a USB Ethernet adapter
+instead of a computer. The cable then works the way WiFi does today, with
+both sides on it: the backbone side (the node's connections out to its TCP
+backbones) and the LAN side (local clients connecting to its TCP server).
+WiFi can stay on alongside it. LoRa, Bluetooth and the firewall are
+unchanged: the cable is another way into the IP network that `TcpInterface`
+already uses.
+
+One adapter protocol only: **CDC-ECM**, the USB standard for Ethernet. It
+covers Realtek's RTL8152/8153/8156 and ASIX's AX88179A, which between them
+are most adapters sold. Adapters that speak only their maker's own protocol
+(the older AX88179 without the A, AX88772, Microchip LAN78xx, many cheap
+100 Mbit sticks) won't work. SPI Ethernet chips such as the W5500 are ruled
+out.
+
+## What the proof of concept showed
+
+Branch `poc/usb-ecm`, folder `poc/usb_ecm/`, whose README has the details.
+On a V4.2, through James's USB-C dock (three hubs, then an AX88179A):
+
+- The S3 runs the port as a full-speed USB host (12 Mbit/s) and finds the
+  adapter through all three hubs.
+- It picks the ECM configuration (the AX88179A offers it third, Realtek
+  second) and gets an address from the router by DHCP.
+- Pings both ways at up to 1472 bytes: no loss.
+- TCP, 1 MB each way, five runs: 550–585 kB/s in, 460–490 kB/s out. That's
+  about 4.5 Mbit/s, more than WiFi gave on the same board (325/360 kB/s) and
+  far beyond what LoRa traffic needs.
+- After a fix to the USB library's hub handling (below), the wired link came
+  back within 10 s of every restart.
+
+The USB host code is a subset of [CherryUSB](https://github.com/cherry-embedded/CherryUSB)
+v1.6.1, Apache-2.0. Apache-2.0 code may go into GPL-3 firmware. Its notices
+stay and it is credited in the README.
+
+## Hardware
+
+**Boards.** The V4.2 (schematic `WiFi_LoRa_32_V4.2`) and the V4 R8 (Heltec's
+`HTIT-WBR8H_V4.3.2`) are wired the same way: USB-C data lines through 22-ohm
+resistors straight to GPIO19/20, no USB-serial chip, 5.1K pull-downs on CC
+(the port only takes power), VBUS through fuse F1 into the 5 V rail. So both
+can be a USB host. The V3 has a CP2102 USB-serial chip in the way and can't.
+Other V4 revisions: check the schematic when one arrives.
+
+**Power.** The board can't power the adapter: its USB-C 5 V is an input only.
+The adapter has to bring its own power, one of two ways:
+
+1. An adapter or dock with a charging port. The charger powers the adapter,
+   and the adapter passes power on to the board through the same cable
+   (James's dock does this). This is the setup the README describes.
+2. A plain adapter, with 5 V fed into the board's header (JP4 pin 2, which is
+   wired to the USB-C 5 V line). Powers both. For people who build their own.
+
+With option 1, unplugging the charger powers the board off unless it has a
+battery.
+
+## Decided (James, 2026-10-25)
+
+1. **Off by default, switched on in the captive portal's WiFi settings.**
+   With it on, the board checks at each boot whether a computer is on the USB
+   port. If one is, the port stays USB serial for that boot, as today. If
+   not, after a few seconds it becomes the adapter's port until the next
+   restart. So to flash or use USB serial again, plug in the computer and
+   press reset. The board can't notice a computer plugged in later, because
+   two USB hosts can't see each other.
+2. **WiFi and the cable together, and the cable follows WiFi's pattern.**
+   WiFi carries both sides today: the backbones and the LAN clients. The
+   cable carries both sides the same way, from the same settings:
+   - The backbone slots and the local TCP server are not duplicated. They
+     work over whichever network is up, or both.
+   - Backbone connections go out over the cable when it's up and over WiFi
+     when it isn't. A pulled cable moves them to WiFi; its return moves new
+     connections back.
+   - The local TCP server already listens on every address
+     (`TcpInterface.h:149`, `WiFiServer` with no address), so LAN clients
+     reach it over WiFi and over the cable at the same time. Replies leave by
+     the network the client came in on: the proof of concept showed that,
+     with traffic to the WiFi address staying on WiFi while the cable was up.
+   - mDNS announces the node on both networks (see Unknowns).
+   - The firewall's sides are Reticulum interfaces (local server = LAN,
+     backbones = WAN), whichever network carries them, so a LAN client on the
+     cable is LAN and a backbone on the cable is WAN, exactly as on WiFi.
+3. **Experimental, promising nothing.** It goes out marked experimental in the
+   README and the portal, with no list of supported adapters. The README says
+   which adapter it was tested with, that it needs an ECM adapter that brings
+   its own power, and that other adapters may or may not work.
+
+## Firmware changes
+
+In order of work. Line numbers are on main (02cd8c7).
+
+### 1. The USB library
+
+Bring the CherryUSB subset over from the proof of concept into `lib/CherryUSB/`,
+with its `UPSTREAM` and `LICENSE` files. Only the V4 builds compile it (a
+build flag, `RTNODE_ETH_USB=1`, in the two `rtnode_heltec_v4*` envs).
+
+The changes it already carries, each marked `RTNode` in the source:
+
+- The ESP32-S3 glue, rewritten for host only on IDF 4.4.
+- Picking the ECM configuration by reading each one (the library's default
+  takes the first, which is the maker's own protocol).
+- The driver list as a plain array, since Arduino's linker scripts don't
+  collect the library's linker section.
+- A one-byte pad on frames that exactly fill their last USB packet, because
+  the library can't send the empty packet that would end them. Linux pads ECM
+  frames the same way.
+- Hubs. Upstream stops polling a hub after one failed status read. Every
+  other restart, the dock's hub sent its first report out of sequence, and
+  the adapter was never seen. Now a failed read makes the library read every
+  port of that hub once and carry on polling. A device already present when
+  its hub comes up counts as newly connected, as Linux does. This reads the
+  hub's state again; it doesn't resend anything.
+
+Two new changes the proof of concept didn't need, both found while planning:
+
+- **Sending must not wait forever.** `usbh_cdc_ecm_eth_output()` waits with no
+  limit for the adapter to take a frame (`USB_OSAL_WAITING_FOREVER`,
+  `usbh_cdc_ecm.c:305`). It runs on lwIP's thread, which WiFi shares, so a
+  stuck adapter would freeze all networking. Give it a hard ceiling (one
+  frame's worth of time at full speed, a few milliseconds). On timeout, drop
+  the frame, count it and log it, as WiFi drops do. This is a ceiling on
+  correct code, not a retry: TCP resends as it always does.
+- **Follow the cable.** The glue marks the wired link up the moment the adapter
+  enumerates (`usbh_net.c`, `usbh_cdc_ecm_run()`), and the ECM driver only
+  reads the adapter's link reports until the first link-up. A pulled cable
+  would leave the node holding a wired address, and preferring the dead wire
+  over WiFi. Keep reading the link reports while the adapter is attached.
+  Take the wired interface down on link loss, and up again (with a fresh
+  DHCP) on link return.
+
+Settings for the glue:
+
+- The wired interface's route priority above WiFi station mode's 100, so
+  connections prefer the cable.
+- Name it the way IDF 4.4's mDNS expects its one Ethernet interface (the SDK
+  has fixed slots for station, access point and Ethernet only, and no way to
+  add another). This should make mDNS answer on the cable; it's unproven.
+- The library's two tasks run on core 0 at priorities 24 and 23, above WiFi
+  and lwIP (18). Set them below WiFi's task and NimBLE's host task, and check
+  with Bluetooth peers connected.
+- Library logs go to RTNode's log, not `printf`.
+
+The proof of concept's test tools (HTTP endpoints, network log, speed-test
+ports, port power switch) stay on the proof-of-concept branch.
+
+### 2. Who owns the USB port at boot
+
+New file `EthernetUsb.h`, in the style of `MdnsService.h`, holding everything
+that follows.
+
+- **First thing in `setup()`, always**, on every V4 build: give the USB port
+  back to USB serial. Which side owns the port is kept in a register that
+  survives a software restart. Without this, a node that ran as host, then had
+  Ethernet turned off in the portal (which restarts it), would boot with a
+  dead USB port.
+- `setup()` already waits up to 2 s for USB serial and then another 2 s
+  (`RNode_Firmware.ino:492-502`). If Ethernet is on and no computer has sent
+  anything in that time (the port sees nothing from a host every
+  millisecond), switch the port to host and start the library. Log the
+  choice, on the header's UART pins (JP4 5/6), since USB serial is then gone.
+- Never call `Serial.end()` before switching: it turns the USB pins into
+  plain outputs and the host can't use them.
+- With Ethernet off, nothing changes from today.
+
+### 3. "The network is up" counts the cable
+
+Add `network_is_up()` = WiFi connected, or the wired link up with an address.
+Use it where WiFi alone is checked now:
+
+| Where | Today |
+|---|---|
+| `RNode_Firmware.ino:1222` | TCP interfaces start only if WiFi is enabled and connected |
+| `RNode_Firmware.ino:1235` | mDNS starts only on WiFi |
+| `RNode_Firmware.ino:3121-3151` | the loop's late start and polling of TCP interfaces sit under `wifi_enabled` |
+| `RNode_Firmware.ino:3259` | mDNS late start |
+| `TcpInterface.h:205` | a backbone reconnects only if `WiFi.status() == WL_CONNECTED` |
+| `MdnsService.h:59` | `start_sta()` refuses without WiFi |
+
+The TCP interfaces are created only when WiFi is enabled
+(`RNode_Firmware.ino:1128`, the backbones and the local server). Create them when WiFi or Ethernet is
+enabled. "WiFi off" then still means the radio is off, and an Ethernet-only
+node is no longer a LoRa-only repeater.
+
+Nothing in the firewall changes. Its LAN and WAN sides are Reticulum
+interfaces (the local TCP server, the backbone clients), whichever cable or
+radio carries them. `CORE_PRINCIPLES.md` applies as it is.
+
+### 4. The WiFi watchdog
+
+The watchdog restarts the node after 15 s without WiFi
+(`RNode_Firmware.ino:3082-3117`). While the wired link is up, a WiFi loss
+must not restart it: the backbones are on the cable and a restart would drop
+them. The watchdog acts only when WiFi is the node's only network. WiFi keeps
+trying to rejoin every 10 s, as it does today (`Remote.h`,
+`wifi_update_status()`). The cost: if WiFi's driver ever stays stuck while
+the cable is up, WiFi's LAN clients wait until the cable goes down or the
+node restarts. The bench soak shows whether that happens. A pulled
+cable doesn't restart anything: the wired interface goes down, connections
+move to WiFi (if on), and it comes back on its own when the cable returns.
+
+### 5. Portal, status and display
+
+- `FirewallConfig.h`: the "WiFi Network" section becomes "IP Network"
+  (James, 10-26). Its first switch is "Ethernet (USB adapter,
+  experimental)", off by default, above the WiFi switch. Its short help
+  text says the adapter must be CDC-ECM and bring its own power, and that
+  USB serial is off while it's in use. The README keeps the full
+  description.
+- The WiFi switch says plain "Disabled", with no "LoRa-only repeater"
+  wording (James, 10-26).
+- Saved at `ADDR_CONF_ETH_EN` = 0x23F, the first free byte after
+  `ADDR_CONF_BLE_EN` (0x23E). 0x73 = on; 0x00 or 0xFF = off.
+- Saving already restarts the node (`FirewallConfig.h:951-955`), so the port
+  role is decided fresh.
+- No portal status: the portal runs only in setup mode, which holds up
+  `setup()` before Ethernet starts. The wired link, address, adapter
+  (vendor:product) and drops go to the log instead (`[ETH]` lines), and the
+  display shows the ETH indicator.
+
+### 6. ETH indicator on the display
+
+James, 2026-10-25: an ETH indicator under the BLE indicator.
+
+The status area (`Display.h`, `draw_stat_area()`, line 777) is 64×64 pixels.
+Row 1 has LORA at the left and BLE in a second column (circle at x 40, text
+at x 46, line 793). Row 2 has only WIFI (line 803), so ETH goes in the
+second column of row 2, directly under BLE, drawn the same way:
+
+```
+ o LORA   o BLE        row 1, y 4
+ o WIFI   o ETH        row 2, y 14   (circle 40,14 r3; text at 46,16)
+ o WAN:1/1             row 3
+ o LAN                 row 4
+```
+
+- **Filled circle, "ETH":** the cable is up and the wired interface has an
+  address.
+- **Hollow circle, "eth":** Ethernet is running this boot, but there's no
+  wired link with an address yet: no adapter, no cable, or waiting for DHCP.
+- **Hidden:** Ethernet is off in the portal, or it can't run this boot
+  because a computer was on the USB port at start-up and the port stayed USB
+  serial. The same rule as BLE (hidden when off or unable to run) and LAN.
+
+It fits: in the display's small font (Org_01), "WIFI" ends at x 26 and
+"ETH" is as wide as "BLE" above it.
+
+Two fields in `firewall_state`, next to `ble_running` and `ble_peers`
+(`FirewallMode.h:188`): `eth_running` (the port became the adapter's port
+this boot) and `eth_up` (link up with an address), set by `EthernetUsb.h`.
+
+Only the V4 builds draw it (`RTNODE_ETH_USB`), as only they draw BLE
+(`RTNODE_BLE`).
+- `firewall_needs_config()` (`FirewallConfig.h:965`) needs no change: after
+  the first save the firewall flag is set, so an Ethernet-only node with no
+  SSID isn't sent back to the portal.
+
+## Cost
+
+PERFORMANCE_STRATEGY.md asks every change to state this up front. Measured
+from the proof of concept's build of the library subset:
+
+| | Cost | Note |
+|---|---|---|
+| Flash | about 37 KB | V4 app slots are 6.25 MB |
+| Static internal RAM | about 21 KB as the library ships (16 KB zeroed, 5 KB initialised) | over budget as is; allocated at start only when Ethernet is on (below) |
+| Task stacks | about 6 KB internal, only with Ethernet on | hub task 4 KB, receive task 2 KB |
+| Frames | lwIP buffers per frame, as for WiFi | bounded by lwIP's pools |
+| CPU | core 0, only while traffic flows | about 4.5 Mbit/s at most |
+
+Static RAM is already at its budget: the V4 bench build of main uses 25.2 %
+(82,412 of 327,680 bytes) against PERFORMANCE_STRATEGY's 25 %. So the
+library's static buffers can't simply be added. Its larger buffers (the
+frame buffers, the hub and class tables) are allocated at start, only when
+Ethernet is on, which leaves the static cost with Ethernet off near zero.
+Then check the other budgets (min free internal heap ≥ 48 KB, largest block
+≥ 24 KB, loop p99 ≤ 5 ms) with Ethernet off and on.
+
+## How it fits the design principles
+
+- No retries are added. TCP's own resends, DHCP's own protocol and
+  `TcpInterface`'s existing reconnect schedule are unchanged. The hub fix
+  re-reads the hub's state, which USB hubs expect: a hub is polled for as
+  long as it is attached.
+- The one new timeout (sending a frame) is a hard ceiling on a call that
+  should take microseconds. When it trips, the frame is dropped, counted and
+  logged.
+- Nothing waits in `loop()`. The library works on its own tasks. The send
+  ceiling keeps lwIP's thread from waiting on the adapter.
+- Every drop path reports itself: send timeouts, frames dropped with the link
+  down, unsupported adapters ("adapter 0bda:8153 has no ECM configuration"),
+  hub read errors.
+
+## Tests
+
+Each fix gets a test that fails before it and passes after.
+
+**Bench, V4.2 and R8, on the dock (and any other ECM adapter at hand):**
+
+1. Boot with a computer attached: USB serial as today, Ethernet off or on.
+2. Boot from the adapter alone: wired address within 10 s; log on the UART
+   header.
+3. Restart while in use, 10 times (portal save, and a forced restart): the
+   wired link is back every time. Fails on upstream CherryUSB's hub code.
+4. Pull the Ethernet cable for 30 s and put it back. The wired interface
+   goes down and up, backbones move to WiFi and back, and nothing restarts.
+   Fails before the link-report change.
+5. Hold the adapter busy, or unplug it mid-send, with a battery on the board.
+   Sending never blocks for more than the ceiling, and WiFi keeps working.
+   Fails before the send ceiling.
+6. Unplug and replug the adapter (board on battery): it's found again.
+7. Ethernet on, then off in the portal: USB serial works after the restart.
+   Fails without the port hand-back at boot.
+8. Unsupported adapter: a clear log line, no crash. WiFi carries on if on.
+9. Bluetooth peers connected while the wired link carries traffic: no BLE
+   drops, budgets met.
+10. mDNS: the node answers `rtnode….local` over the cable and over WiFi.
+11. Both sides on both networks: WiFi and the cable on, backbone up over the
+    cable, one LAN client on WiFi and one on the cable. Both clients reach
+    the backbone; the firewall's whitelists fill the same way as for WiFi
+    clients; pulling the cable moves the backbone to WiFi and the WiFi client
+    carries on.
+12. Cable only, WiFi off: backbones and LAN clients over the cable; the
+    watchdog never fires.
+13. The ETH indicator: hidden with Ethernet off, and with a computer on the
+    port at boot; hollow with no adapter, then with no cable; filled once
+    DHCP gives an address; hollow again within a second or two of pulling
+    the cable.
+
+**Contract suites** (CONTRACT_TESTS.md): lan, wan and soak over the cable,
+WiFi off. Then with WiFi on as well.
+
+**Private staging network**, as for every release: the node's backbone over
+the cable to the staging RPi, and a day-long soak with the serial log on the
+UART header.
+
+### Bench results so far (V4.2, 2026-10-25/26)
+
+The firmware was a bench build of this branch: 3fc4bfa on 10-25, 9f032ec on
+10-26. Bench builds turn WiFi and Ethernet on in RAM, run the local TCP
+server on 4242, and point backbone 1 at the stand-in backbone on the M1
+(192.168.2.117:4290).
+
+From 9f032ec, bench builds also carry a **network log**, for testing only. It
+stands in for a serial adapter on the TX pin. TCP port 4243 sends the log
+(a 16 KB backlog, then live lines). It takes two commands: `restart`, and
+`restart nowifi`, which turns WiFi off for the next boot only. Release
+builds don't have it.
+
+**A WiFi bug the bench build exposed, fixed in 929d215.**
+- With the network log added, the node still connected out over WiFi, but
+  nothing could reach it there: no ping, no local server.
+- The cause is two libraries using one name, `INADDR_NONE`, for different
+  things.
+  - In Arduino it means "no address", which asks for DHCP.
+  - In the network stack it means 255.255.255.255.
+  - The network log's headers put the network stack's meaning first. So the
+    node's WiFi setup asked for 255.255.255.255 as its own fixed address,
+    gateway and netmask.
+- `Remote.h` now asks for "no address" directly.
+- Release builds weren't affected, because their headers come in the other
+  order. But any future include could set the same trap, so the fix belongs
+  on main too.
+
+- **Test 1, a computer on the port.** With the M5 on the port at boot, the
+  log said Ethernet was on but a computer was on the port, so it stayed USB
+  serial. USB serial kept working, and the backbone came up over WiFi. Pass.
+- **Test 2, booting from the adapter.** Pass.
+  - On James's ASIX dock, the node took a wired address, 192.168.2.137
+    (adapter MAC 20:7b:d2:6e:85:b0), next to its WiFi address,
+    192.168.2.135. The display showed ETH filled.
+  - The wired address came 5.7 s after the port became a USB host. The port
+    switches about 5.6 s into the boot, so the address arrives 11–12 s after
+    a restart.
+  - A different USB hub gave no wired address. The node kept running on
+    WiFi. Which adapter that hub has, and what the log says, are still to
+    be found (test 8).
+- **Test 3, restarting 10 times.** Pass for the link.
+  - The network log's `restart` command restarted the node 10 times in a
+    row.
+  - Each time, the wired address came back 12–14 s after the command, and
+    the backbone 12–13 s after it.
+  - There were no USB or hub errors. The only error line is on every boot:
+    the library has no separate driver for the adapter's data interface
+    (USB class 0x0a). That's expected, because the Ethernet driver runs it
+    through the adapter's control interface.
+  - In three of the ten rounds, one of three probes sent in the first
+    seconds after the boot was lost. Six probes once the node settled lost
+    none.
+  - A restart from a portal save wasn't tried.
+- **Test 10, mDNS.** Pass. `rtnode6580.local` answers with both addresses,
+  .137 and .135, and advertises `_reticulum._tcp` on 4242. The log calls it
+  "STA up" when only the cable is up, which is only a wording issue.
+- **Test 12, the cable only, WiFi off.** Pass.
+  - The node booted with WiFi off, by `restart nowifi`.
+  - It had a wired address at 10.5 s. The backbone connected from .137, and
+    the local server answered on .137, not on .135.
+  - The watchdog never fired.
+- **Contract suites, the cable only, WiFi off.** All pass.
+  - lan: 24 of 24 (57 s).
+  - wan: 18 of 18 (231 s). The flood test leaked nothing.
+  - soak: 2 of 2 (917 s). 450 of 450 echoes and 7 of 7 resources arrived,
+    with no restarts and no panics.
+- **Contract suites over the cable, WiFi on as well.** All pass, with the
+  same counts as above.
+  - lan: 24 of 24 (56 s).
+  - wan: 18 of 18 (234 s). The flood test leaked nothing.
+  - soak: 2 of 2 (917 s). 450 of 450 echoes and 7 of 7 resources, with no
+    restarts and no panics. Echo round trips were 55 ms median and 149 ms
+    at the 95th percentile.
+  - The backbone first connected over WiFi, which was up before the cable
+    had its address. It reconnected two minutes later, from the cable.
+- **Test 11, both networks.** Pass.
+  - With WiFi and the cable both up, two clients probed the node at the same
+    time, one through .135 and one through .137. Each got 10 replies out of
+    10.
+  - The cable pull below covers the rest.
+- **Tests 4, 11 and 13, pulling the cable (10-26 18:01).** Pass.
+  - Before the pull, the backbone was connected from the cable (.137). A
+    client on WiFi probed the node every 2 s throughout.
+  - At the pull, the log said "Wired link down" and "wired address lost". One
+    frame being sent was dropped.
+  - The node closed the backbone's connection, and 50 ms later the
+    backbone was connected again, from WiFi.
+  - The cable was out for 52 s. When it went back in, the node had its wired
+    address in the same second, the same lease as before. The local server
+    answered on .137 again.
+  - The backbone stayed on WiFi, as expected: nothing moves it back.
+  - Nothing restarted (uptime carried on), and the watchdog never fired.
+  - The WiFi client never noticed. It got 90 replies to 90 probes across
+    the pull, with round trips of 102–608 ms (median 194 ms).
+  - James watched ETH go hollow at the pull and fill again once the cable
+    was back.
+- **Test 8, the other hub.** Not a firmware matter. James's MacBook doesn't
+  see that hub's Ethernet either, so its chip most likely speaks only its
+  maker's own protocol, not CDC-ECM. That's what the plan says to expect
+  for such adapters.
+- **Local TCP server over the cable.** rnprobe from the M1 to the node's
+  probe destination, through 192.168.2.137:4242, got 5 replies out of 5 at
+  about 99 ms. Over WiFi it also got 5 out of 5, at 105–232 ms. Ping
+  averaged 41 ms over the cable and 113 ms over WiFi; the M1 itself is on
+  WiFi.
+- **Backbone over the cable.** At boot the backbone connected from the WiFi
+  address, because WiFi was up before DHCP finished on the cable. It
+  reconnected about two minutes later, when the silent stand-in hit the
+  read timeout, and that connection came from the wired address. So new
+  connections prefer the cable.
+
+**With a battery on the board (10-26, 19:10–19:43).** These ran on a test
+image with no Ethernet override, so Ethernet followed the portal's switch.
+- **The portal switch.** Pass. With Ethernet set to Enabled in the portal,
+  the node restarted as the adapter's host. With it set to Disabled, the
+  node restarted as USB serial. Until now every test had used the bench
+  build's override.
+- **Test 6, unplugging and replugging the adapter.** Pass.
+  - The dock was unplugged from the board at 19:26:25, with probes running
+    over the cable and over WiFi. The node dropped the adapter and its
+    hubs, logged "Wired link down", and had the backbone back over WiFi
+    96 ms later.
+  - The dock went back in after 88 s. The hubs and the adapter were found
+    again, the link came up 2.7 s after the driver started, and the wired
+    address came 7.4 s after the plug-in.
+  - A plug-in after a restart with nothing on the port (the node had been
+    up 91 s) gave the address 7.4 s after the plug-in as well.
+  - Earlier, a first plug-in after a portal restart still had no link 8 s
+    after the driver started, when James pressed reset. The adapter had
+    been without power for about ten minutes. It didn't happen again, so
+    it was most likely the adapter's cable link taking longer to come up.
+- **Test 5, the send ceiling (in part).** Unplugging the adapter during
+  traffic blocked nothing, and WiFi carried on. But no send was in flight
+  at that moment ("0 sending" dropped), so the ceiling itself, for an
+  adapter that stays attached but stops taking frames, wasn't exercised.
+  That would need a fault put in on purpose, in a bench build.
+- **Test 7, Ethernet off in the portal.** Pass. After the portal's
+  restart with Ethernet off, the board moved on its battery from the dock
+  to the M5 without restarting. The M5 saw it as USB serial (its USB
+  serial number is the board's MAC).
+- **Bluetooth was turned on in the portal.** The BLE indicator showed
+  hollow, with no peer.
+
+- **Test 9, Bluetooth while the cable carries traffic (10-26 20:23–20:37).**
+  Pass.
+  - James turned off the other RTNode near the M5. The Pixel's Retichat
+    (0.1.15) then dialled this node (address D7:78:6C:10:2C:C4, RSSI −74
+    from the M5) and its link settled in 3.2 s. Its identity matches this
+    node's probe destination.
+  - From the M1 over the cable, a path request reached the Pixel's
+    destination two hops away, through this node.
+  - An LXMF message sent over the cable, as a direct link, reached Retichat
+    over Bluetooth in 0.6 s, with its link and delivery proofs coming back
+    the same way. A second one after the load period also took 0.6 s.
+  - Over 13 minutes, with 300-byte probes every 0.2 s on the cable (1,695
+    replies, none lost, 106 ms median, 225 ms worst), the Bluetooth link
+    never dropped or redialled. Free memory stayed flat.
+
+- **The staging soak (10-26 19:43 → 10-27 19:43 EDT).** Pass. 24 hours on
+  the dock, backbone to the staging Pi (192.168.2.107:4242), with WiFi and
+  the cable both up. The M1 recorded the network log and checked it every
+  10 minutes; all 145 checks were clean:
+  - one boot, no watchdog restart;
+  - one backbone connection, held throughout;
+  - the cable never lost;
+  - free memory flat at 174–176 KB;
+  - the log never quiet for more than 56 s.
+
+The stalled-adapter send ceiling in test 5 was not exercised; James (10-27)
+doesn't need it tested. Every other test has run and passed.
+
+Nothing moves a backbone back to the cable when the cable returns. A
+backbone that moved to WiFi stays there until its connection drops for some
+other reason. The first line of test 4 ("move to WiFi and back") should be
+read that way.
+
+## Order of work and effort
+
+1. Library in, with the two new fixes and its settings: 1–2 days.
+2. Port role at boot, `network_is_up()`, watchdog, portal, ETH indicator:
+   1–2 days.
+3. Bench tests 1–13 on the dock: 1 day.
+4. Contract suites and the staging soak: 1–2 days, mostly waiting.
+
+About a week. Nothing here needs the RNode or Reticulum code changed.
+
+## Unknowns
+
+- Whether IDF 4.4's mDNS answers on the wired interface once it's named as
+  its Ethernet slot. If not: advertise over WiFi only, and document it.
+- How Realtek adapters report link changes over ECM (the AX88179A's reports
+  were seen only at first link-up).
+- Whether every adapter with a charging port passes power back to a board
+  that only takes power. James's dock does; others may not, which is one
+  reason it promises nothing.
+- Whether the dock's out-of-sequence hub report is the dock's quirk or the
+  library's. The fix covers both. The fix could also be offered to CherryUSB.

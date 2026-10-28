@@ -12,6 +12,7 @@
 
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include "EthernetUsb.h"
 
 namespace mdns_service {
 
@@ -52,18 +53,23 @@ inline void resolve_hostname(const char* custom, const char* default_suffix,
 // Start mDNS in STA mode and (optionally) advertise the local TCP server.
 // `hostname` is the .local name — case and stray chars are normalized.
 // `tcp_port == 0` means "do not advertise the _reticulum._tcp service".
+// On WiFi, or the USB Ethernet cable once it has an address: IDF's mDNS
+// answers on each interface that is up (EthernetUsb.h names the cable's for
+// its Ethernet slot).
 inline bool start_sta(const char* hostname, uint16_t tcp_port) {
     bool& running = running_ref();
     if (running) return true;
     if (hostname == nullptr || hostname[0] == 0) return false;
-    if (WiFi.status() != WL_CONNECTED) return false;
+    if (WiFi.status() != WL_CONNECTED && !ethernet_usb::has_address()) return false;
 
     char norm[32];
     normalize_hostname(hostname, norm, sizeof(norm));
     if (norm[0] == 0) return false;
 
+    // ethernet_usb::log_line(): USB serial, and UART0 while the USB port is
+    // an Ethernet adapter's host.
     if (!MDNS.begin(norm)) {
-        Serial.println("[mDNS] begin() failed in STA mode");
+        ethernet_usb::log_line("[mDNS] begin() failed in STA mode");
         return false;
     }
     if (tcp_port != 0) {
@@ -71,15 +77,13 @@ inline bool start_sta(const char* hostname, uint16_t tcp_port) {
         MDNS.addServiceTxt("reticulum", "tcp", "kind", "rtnode-heltec");
     }
     running = true;
-    Serial.print("[mDNS] STA up: ");
-    Serial.print(norm);
-    Serial.print(".local");
+    char msg[96];
     if (tcp_port != 0) {
-        Serial.print(" (_reticulum._tcp port ");
-        Serial.print(tcp_port);
-        Serial.print(")");
+        snprintf(msg, sizeof(msg), "[mDNS] STA up: %s.local (_reticulum._tcp port %u)", norm, (unsigned)tcp_port);
+    } else {
+        snprintf(msg, sizeof(msg), "[mDNS] STA up: %s.local", norm);
     }
-    Serial.println();
+    ethernet_usb::log_line(msg);
     return true;
 }
 

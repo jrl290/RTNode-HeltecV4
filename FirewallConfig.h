@@ -264,8 +264,28 @@ static void config_send_html() {
     html += String(firewall_state.node_name);
     html += F("'>");
 
+    html += F("<h2>&#x1f4f6; IP Network</h2>");
+
+#ifdef RTNODE_ETH_USB
+    // Ethernet through a USB adapter (EthernetUsb.h): first in the IP Network
+    // section, as it carries what WiFi carries, from the same settings. Off by
+    // default.
     html += F(
-        "<h2>&#x1f4f6; WiFi Network</h2>"
+        "<label>Ethernet (USB adapter, experimental)</label>"
+        "<select name='eth_en'>"
+    );
+    html += F("<option value='1'");
+    if (firewall_state.eth_enabled) html += F(" selected");
+    html += F(">Enabled</option>");
+    html += F("<option value='0'");
+    if (!firewall_state.eth_enabled) html += F(" selected");
+    html += F(">Disabled</option>");
+    html += F("</select>");
+    html += F("<p class='note'>A CDC-ECM adapter with a charging port, which powers the board too. "
+              "USB serial is off while it's in use. Takes effect after a restart.</p>");
+#endif
+
+    html += F(
         "<label>WiFi</label>"
         "<select name='wifi_en'>"
     );
@@ -274,7 +294,7 @@ static void config_send_html() {
     html += F(">Enabled</option>");
     html += F("<option value='0'");
     if (!firewall_state.wifi_enabled) html += F(" selected");
-    html += F(">Disabled (LoRa-only repeater)</option>");
+    html += F(">Disabled</option>");
     html += F("</select>");
 
     html += F(
@@ -715,6 +735,11 @@ static void config_handle_save() {
 
     // ── WiFi enable setting ──
     firewall_state.wifi_enabled = (config_server->arg("wifi_en").toInt() == 1);
+    // Only where the form has the setting (the V4 builds), so a save
+    // elsewhere leaves it as it was
+    if (config_server->hasArg("eth_en")) {
+        firewall_state.eth_enabled = (config_server->arg("eth_en").toInt() == 1);
+    }
 
     // ── Display blanking (EEPROM stores minutes, 0 = disabled) ──
     int blank_minutes = config_server->arg("disp_blank").toInt();
