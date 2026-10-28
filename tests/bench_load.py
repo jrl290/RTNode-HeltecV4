@@ -164,13 +164,13 @@ def start_bench_node(serial_port, host, port, out, isolated):
         if capture.wait_for(stand_in, reset_at, 1):
             with capture.lock:
                 line = next(text for t, text in capture.lines if t >= reset_at and stand_in in text)
-            host = line.split(stand_in, 1)[1].rsplit(":", 1)[0]
+            backbone = line.split(stand_in, 1)[1].rsplit(":", 1)[0]
             try:
-                private = ipaddress.ip_address(host).is_private
+                private = ipaddress.ip_address(backbone).is_private
             except ValueError:
                 private = False
             if not private:
-                sys.exit(f"backbone 1 goes to {host}: refusing to test through a backbone off the bench network")
+                sys.exit(f"backbone 1 goes to {backbone}: refusing to test through a backbone off the bench network")
         if not tcp_ready(host, port, 60):
             sys.exit(f"local TCP server {host}:{port} not reachable")
     return capture

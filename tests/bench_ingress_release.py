@@ -5,11 +5,11 @@ A flooding client (F) announces five fresh destinations a second for 70 s,
 then stays connected and silent. An observer (B), connected first on its own
 TCP connection, records when it hears each of F's destinations.
 
-RTNode follows Python RNS 1.5.2 (PERFORMANCE_STRATEGY.md, "Ingress
-control"): the burst ends once the rate is back under the threshold and has
-not reached it for 15 s; held announces are released from then on, one every
-5 s, fewest hops first (all of F's have the same hops, so oldest first), by a
-job that runs every 5 s. So B should hear:
+In RTNode's ingress control (RETICULUM_BEHAVIOUR.md §1) the burst ends once
+the rate is back under the threshold and has not reached it for 15 s; held
+announces are released from then on, one every 5 s, fewest hops first (all
+of F's have the same hops, so oldest first), by a job that runs every 5 s.
+So B should hear:
   - during the flood, only the few destinations the node took before it
     detected the burst;
   - nothing more until the node logs "burst over";
@@ -34,10 +34,10 @@ from bench_load import HERE, WORKSPACE_PYTHON, LineCapture, start_bench_node  # 
 
 FLOOD_RATE = 5.0
 FLOOD_SECONDS = 70.0
-BURST_HOLD = 15         # Python 1.5.2 IC_BURST_HOLD
-FREQ_DECAY = 10         # Python 1.5.2 AR_FREQ_DECAY
-RELEASE_INTERVAL = 5    # Python 1.5.2 IC_HELD_RELEASE_INTERVAL
-JOB_INTERVAL = 5        # Python Transport.interface_jobs_interval
+BURST_HOLD = 15         # s at or over the threshold, then the flood may end (§1)
+FREQ_DECAY = 10         # s before an arrival may be forgotten (§1)
+RELEASE_INTERVAL = 5    # s between releases from one source (§1)
+JOB_INTERVAL = 5        # s between release rounds (§1)
 BURST_END_WITHIN = FREQ_DECAY + BURST_HOLD + 4 * JOB_INTERVAL  # after F falls silent
 SLACK = 3               # release to B: the node's rebroadcast window, TCP
 SKEW = 1                # serial lines reach the host up to 0.2 s after the event

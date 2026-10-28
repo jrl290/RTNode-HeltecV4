@@ -1,3 +1,7 @@
+// microReticulum, by Chad Attermann, Apache-2.0 (lib/microReticulum/LICENSE).
+// Changed for RTNode (https://github.com/jrl290/RTNode-HeltecV4); the changes
+// are in RTNode's git history.
+
 #pragma once
 
 #include "Log.h"
@@ -312,25 +316,6 @@ namespace RNS { namespace Type {
 			MODE_GATEWAY        = 0x40,
 		};
 
-		// Ingress control, as Python RNS 1.5.2 Interface (IC_*): announces for
-		// destinations not yet in the path table are held while a source is
-		// bursting, then released one at a time.
-		static const uint8_t  IA_FREQ_SAMPLES          = 48;
-		static const uint8_t  IC_DEQUE_MIN_SAMPLE      = 2;
-		static const uint8_t  AR_FREQ_DECAY            = 10;    // s; Python 1/AR_MINFREQ_HZ
-		static const uint16_t MAX_HELD_ANNOUNCES       = 256;
-		static const uint16_t MAX_HELD_ANNOUNCES_SMALL = 32;    // boards whose heap is internal RAM
-		// Python caps held announces per interface only. A node has up to eight
-		// TCP clients, the backbone slots and LoRa, so the total is capped too:
-		// 512 is about 128 KB of PSRAM.
-		static const uint16_t MAX_HELD_ANNOUNCES_TOTAL       = 512;
-		static const uint16_t MAX_HELD_ANNOUNCES_TOTAL_SMALL = 32;
-		static const uint32_t IC_NEW_TIME              = 2*60*60;
-		static constexpr double IC_BURST_FREQ_NEW      = 3;
-		static constexpr double IC_BURST_FREQ          = 10;
-		static const uint16_t IC_BURST_HOLD            = 15;
-		static const uint16_t IC_BURST_PENALTY         = 15;
-		static const uint16_t IC_HELD_RELEASE_INTERVAL = 5;
 
 	}
 

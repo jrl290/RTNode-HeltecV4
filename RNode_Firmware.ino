@@ -152,8 +152,8 @@ public:
 		_IN = true;
 		_OUT = true;
 		_HW_MTU = 508;
-		// The reference's announce cap: relayed announces use at most 2% of
-		// LoRa airtime. The bitrate it needs is kept in step in loop().
+		// Relayed announces use at most 2% of LoRa airtime
+		// (RETICULUM_BEHAVIOUR.md §7). loop() keeps the bitrate in step.
 		_announce_cap = RNS::Type::Reticulum::ANNOUNCE_CAP/100.0;
 	}
 	LoRaInterface(const char *name) : RNS::InterfaceImpl(name) {

@@ -189,9 +189,9 @@ public:
         rx_active = false;
         tx_head = tx_count = 0;
         tx_seq = tx_total = 0;
-        // The next peer is a new source for ingress control; its held
-        // announces go with it, as a detached spawned interface's do.
-        _ingress = RNS::IngressState();
+        // The next peer is a new source for ingress control, and the held
+        // announces of the one that left go with it.
+        _ingress = RNS::IngressGate(RNS::ingress_clock());
     }
 
     void set_online(Protocol which) {

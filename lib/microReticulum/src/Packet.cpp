@@ -1,3 +1,7 @@
+// microReticulum, by Chad Attermann, Apache-2.0 (lib/microReticulum/LICENSE).
+// Changed for RTNode (https://github.com/jrl290/RTNode-HeltecV4); the changes
+// are in RTNode's git history.
+
 #include "Packet.h"
 
 #include "Reticulum.h"
