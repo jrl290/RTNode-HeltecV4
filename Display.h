@@ -132,7 +132,6 @@
   Adafruit_ST7789 display = Adafruit_ST7789(&tft_spi, pin_tft_cs, pin_tft_dc, pin_tft_rst);
   #define SSD1306_WHITE ST77XX_WHITE
   #define SSD1306_BLACK ST77XX_BLACK
-  bool tft_cleared = false;  // the whole screen is black, nothing drawn since
 #elif BOARD_MODEL == BOARD_TECHO
   GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(pin_disp_cs, pin_disp_dc, pin_disp_reset, pin_disp_busy));
   uint32_t last_epd_refresh = 0;
@@ -140,6 +139,10 @@
   #define REFRESH_PERIOD 300000
 #else
   Adafruit_SSD1306 display(DISP_W, DISP_H, &Wire, DISP_RST);
+#endif
+
+#if defined(RTNODE_TFT)
+  bool tft_cleared = false;  // the whole screen is black, nothing drawn since
 #endif
 
 float disp_target_fps = 7;
@@ -226,9 +229,9 @@ void update_area_positions() {
       p_as_x = 64;
       p_as_y = 0;
     }
-  #elif defined(HELTEC_V4_TFT)
+  #elif defined(RTNODE_TFT)
     // The two panels at DISPLAY_SCALE, centred: stacked in portrait (as the
-    // V4's OLED shows them), side by side in landscape.
+    // V4's OLED shows them), side by side in landscape (the T-Deck).
     const int side = 64 * DISPLAY_SCALE;
     if (disp_mode == DISP_MODE_PORTRAIT) {
       p_ad_x = (display.width() - side) / 2;
@@ -415,8 +418,13 @@ bool display_init() {
     // Don't check if display is actually connected
     if(false) {
     #elif BOARD_MODEL == BOARD_TDECK
+    // The screen shares the radio's SPI bus. The radio normally starts the bus
+    // first, on these pins; whichever starts it first sets them.
+    SPI.begin(DISPLAY_CLK, DISPLAY_MISO, DISPLAY_MOSI);
     display.init(240, 320);
     display.setSPISpeed(80e6);
+    // Write only, so there is no way to ask whether the screen is there.
+    if (false) {
     #elif BOARD_MODEL == BOARD_HELTEC_T114
     display.init();
     // set white as default pixel colour for Heltec T114
@@ -493,8 +501,10 @@ bool display_init() {
         #endif
       }
 
-      #if defined(HELTEC_V4_TFT)
-        // The OLED is landscape at rotation 0, this screen portrait.
+      #if defined(RTNODE_TFT)
+        // Side by side or stacked, by the screen's shape once it's turned:
+        // the Expansion Kit is portrait at rotation 0, the T-Deck landscape
+        // at rotation 3.
         disp_mode = display.width() > display.height() ? DISP_MODE_LANDSCAPE : DISP_MODE_PORTRAIT;
       #endif
 
@@ -525,11 +535,11 @@ bool display_init() {
         #endif
       #endif
 
-      #if BOARD_MODEL == BOARD_TDECK
+      #if BOARD_MODEL == BOARD_TDECK && !defined(RTNODE_TFT)
         display.fillScreen(SSD1306_BLACK);
       #endif
 
-      #if defined(HELTEC_V4_TFT)
+      #if defined(RTNODE_TFT)
         // Clear what the screen held at power-up; the first update turns the
         // backlight on.
         display.fillScreen(SSD1306_BLACK);
@@ -583,7 +593,7 @@ void fillRect(int16_t x, int16_t y, int16_t width, int16_t height, uint16_t colo
 void drawBitmap(int16_t startX, int16_t startY, const uint8_t* bitmap, int16_t bitmapWidth, int16_t bitmapHeight, uint16_t foregroundColour, uint16_t backgroundColour) {
   #if DISPLAY_SCALE == 1
     display.drawBitmap(startX, startY, bitmap, bitmapWidth, bitmapHeight, foregroundColour, backgroundColour);
-  #elif defined(HELTEC_V4_TFT)
+  #elif defined(RTNODE_TFT)
     // A rectangle per pixel costs an address window each over SPI, tens of
     // ms per panel. Instead: one window, and each bitmap row sent as its
     // DISPLAY_SCALE screen rows in one write.
@@ -978,8 +988,15 @@ void update_stat_area() {
     if (disp_mode == DISP_MODE_PORTRAIT) {
       drawBitmap(p_as_x, p_as_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), SSD1306_WHITE, SSD1306_BLACK);
     } else if (disp_mode == DISP_MODE_LANDSCAPE) {
+      #if defined(RTNODE_TFT)
+        // As on an OLED, at DISPLAY_SCALE: the panel 2 pixels in, and the
+        // divider on its left edge.
+        drawBitmap(p_as_x + 2 * DISPLAY_SCALE, p_as_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), SSD1306_WHITE, SSD1306_BLACK);
+        if (device_init_done && !disp_ext_fb) fillRect(p_as_x, p_as_y, DISPLAY_SCALE, 64 * DISPLAY_SCALE, SSD1306_WHITE);
+      #else
       drawBitmap(p_as_x+2, p_as_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), SSD1306_WHITE, SSD1306_BLACK);
       if (device_init_done && !disp_ext_fb) drawLine(p_as_x, 0, p_as_x, 64, SSD1306_WHITE);
+      #endif
     }
 
   } else {
@@ -988,7 +1005,11 @@ void update_stat_area() {
     } else if (console_active && device_init_done) {
       drawBitmap(p_as_x, p_as_y, bm_console, stat_area.width(), stat_area.height(), SSD1306_BLACK, SSD1306_WHITE);
       if (disp_mode == DISP_MODE_LANDSCAPE) {
+        #if defined(RTNODE_TFT)
+          fillRect(p_as_x, p_as_y, DISPLAY_SCALE, 64 * DISPLAY_SCALE, SSD1306_WHITE);
+        #else
         drawLine(p_as_x, 0, p_as_x, 64, SSD1306_WHITE);
+        #endif
       }
     }
   }
@@ -1259,7 +1280,7 @@ void update_disp_area() {
   drawBitmap(p_ad_x, p_ad_y, disp_area.getBuffer(), disp_area.width(), disp_area.height(), SSD1306_WHITE, SSD1306_BLACK);
   if (disp_mode == DISP_MODE_LANDSCAPE) {
     if (device_init_done && !firmware_update_mode && !disp_ext_fb) {
-      #if defined(HELTEC_V4_TFT)
+      #if defined(RTNODE_TFT)
         fillRect(p_ad_x, p_ad_y, DISPLAY_SCALE, 64 * DISPLAY_SCALE, SSD1306_WHITE);
       #else
         drawLine(0, 0, 0, 63, SSD1306_WHITE);
@@ -1345,7 +1366,7 @@ void update_display(bool blank = false) {
       #if BOARD_MODEL == BOARD_HELTEC_T114
         display.clear();
         display.display();
-      #elif defined(HELTEC_V4_TFT)
+      #elif defined(RTNODE_TFT)
         // Once per blanking: a full screen is ~150 KB over SPI.
         if (!tft_cleared) {
           display.fillScreen(SSD1306_BLACK);
@@ -1371,7 +1392,7 @@ void update_display(bool blank = false) {
 
       #if BOARD_MODEL == BOARD_HELTEC_T114
         display.clear();
-      #elif defined(HELTEC_V4_TFT)
+      #elif defined(RTNODE_TFT)
         // Nothing to clear: the panels are redrawn whole, the rest stays black.
       #elif BOARD_MODEL != BOARD_TDECK && BOARD_MODEL != BOARD_TECHO
         display.clearDisplay();
@@ -1398,7 +1419,7 @@ void update_display(bool blank = false) {
           last_epd_refresh = millis();
           epd_blanked = false;
         }
-      #elif BOARD_MODEL != BOARD_TDECK && !defined(HELTEC_V4_TFT)
+      #elif BOARD_MODEL != BOARD_TDECK && !defined(RTNODE_TFT)
         display.display();
       #endif
 

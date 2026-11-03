@@ -601,11 +601,11 @@ void setup() {
     boot_seq();
   #endif
 
-  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_HELTEC_T114 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_HELTEC32_V4 && BOARD_MODEL != BOARD_HELTEC32_V3
+  #if BOARD_MODEL != BOARD_RAK4631 && BOARD_MODEL != BOARD_HELTEC_T114 && BOARD_MODEL != BOARD_TECHO && BOARD_MODEL != BOARD_T3S3 && BOARD_MODEL != BOARD_TBEAM_S_V1 && BOARD_MODEL != BOARD_HELTEC32_V4 && BOARD_MODEL != BOARD_HELTEC32_V3 && BOARD_MODEL != BOARD_TDECK
     // Some boards need to wait until the hardware UART is set up before booting
-    // the full firmware. In the case of the RAK4631, Heltec T114, and Heltec V3,
-    // the line below will wait until a serial connection is actually established
-    // with a master. Thus, it is disabled on these platforms.
+    // the full firmware. In the case of the RAK4631, Heltec T114, Heltec V3 and
+    // T-Deck, the line below will wait until a serial connection is actually
+    // established with a master. Thus, it is disabled on these platforms.
     while (!Serial);
   #endif
 
@@ -616,7 +616,9 @@ void setup() {
     input_init();
   #endif
 
-  #if HAS_NP == false && !defined(HELTEC_V4_TFT)  // the Expansion Kit build has no LED
+  // Neither the Expansion Kit build nor the T-Deck has an LED (the T-Deck's
+  // LED pin in Boards.h, 43, is its UART TX).
+  #if HAS_NP == false && !defined(HELTEC_V4_TFT) && BOARD_MODEL != BOARD_TDECK
     pinMode(pin_led_rx, OUTPUT);
     pinMode(pin_led_tx, OUTPUT);
     #ifdef FIREWALL_MODE
@@ -2825,6 +2827,8 @@ void validate_status() {
       device_init_done = true;
       #if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
         model = MODEL_C8;
+      #elif BOARD_MODEL == BOARD_TDECK
+        model = MODEL_D9;   // without a model the radio's TX power is never set
       #endif
       Serial.write("[RTNode] Provisioning check bypassed, modem installed\r\n");
 
@@ -3382,6 +3386,11 @@ void sleep_now() {
           #if defined(HELTEC_V4_TFT)
           digitalWrite(pin_tft_bl, LOW);
           #endif
+      #endif
+      #if BOARD_MODEL == BOARD_TDECK
+          // Backlight off, then the radio, screen, keyboard and touch panel.
+          digitalWrite(DISPLAY_BL_PIN, LOW);
+          digitalWrite(pin_poweron, LOW);
       #endif
       #if PIN_DISP_SLEEP >= 0
         pinMode(PIN_DISP_SLEEP, OUTPUT);

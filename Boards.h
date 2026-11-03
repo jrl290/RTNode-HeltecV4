@@ -632,11 +632,20 @@
       #define HAS_BUSY true
       #define HAS_TCXO true
 
-      #define HAS_DISPLAY false
+      #ifdef FIREWALL_MODE
+        // RTNode (build rtnode_tdeck): the screen shows the OLED's two panels
+        // at twice the size, and RTNode's Bluetooth peers take the place of
+        // RNode's own Bluetooth.
+        #define HAS_DISPLAY true
+        #define HAS_BLE false
+        #define DISPLAY_SCALE 2
+      #else
+        #define HAS_DISPLAY false
+        #define HAS_BLE true
+      #endif
       #define HAS_CONSOLE false
       #define HAS_WIFI true
       #define HAS_BLUETOOTH false
-      #define HAS_BLE true
       #define HAS_PMU true
       #define HAS_NP false
       #define HAS_SD false
@@ -644,9 +653,10 @@
 
       #define HAS_INPUT true
       #define HAS_SLEEP true
-      #define PIN_WAKEUP GPIO_NUM_0
+      #define PIN_WAKEUP GPIO_NUM_0       // the trackball's click
       #define WAKEUP_LEVEL 0
 
+      // GPIO10 powers the radio, the screen, the keyboard and the touch panel.
       const int pin_poweron = 10;
       const int pin_btn_usr1 = 0;
 
@@ -964,6 +974,13 @@
 
   #ifndef DISPLAY_SCALE
     #define DISPLAY_SCALE 1
+  #endif
+
+  // RTNode's colour screens, the Expansion Kit's and the T-Deck's: an ST7789
+  // that shows the OLED's panels at DISPLAY_SCALE and has a backlight instead
+  // of contrast.
+  #if defined(HELTEC_V4_TFT) || (BOARD_MODEL == BOARD_TDECK && defined(FIREWALL_MODE))
+    #define RTNODE_TFT 1
   #endif
 
   #ifndef HAS_RF_SWITCH_RX_TX

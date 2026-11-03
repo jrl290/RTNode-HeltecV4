@@ -1085,7 +1085,7 @@ void config_portal_start() {
         stat_area.setCursor((64 - (5 * 6)) / 2, 48);
         stat_area.print("Setup");
 
-        #if defined(HELTEC_V4_TFT)
+        #if defined(RTNODE_TFT)
         display.fillScreen(SSD1306_BLACK);
         drawBitmap(p_ad_x, p_ad_y, stat_area.getBuffer(), stat_area.width(), stat_area.height(), SSD1306_WHITE, SSD1306_BLACK);
         set_contrast(&display, 0xFF);

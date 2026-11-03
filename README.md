@@ -103,6 +103,22 @@ OLED. Touch and the kit's buttons are not used, except the V4's own button.
 - Neither flasher can tell the kit from a bare V4: choose it with
   `flash.py --board v4-tft`.
 
+#### LILYGO T-Deck
+
+The **`rtnode_tdeck`** build runs RTNode on the LILYGO T-Deck (ESP32-S3,
+SX1262, 320×240 colour screen). The screen shows the OLED's two panels side by
+side at twice the size, with the same code as the Expansion Kit build. The
+trackball's click is the one button: a short press wakes the screen, more
+than 0.7 s sleeps, more than 5 s restarts into setup. The keyboard, the touch
+screen and rolling the trackball are not used.
+
+- **Run on one T-Deck so far.**
+- **Use a USB-A cable or hub.** The T-Deck doesn't connect to a Mac over a
+  USB-C to USB-C cable: no port appears at all.
+- No USB Ethernet: the T-Deck's one USB port is its power and serial port.
+- Its chip reports the same as a V4 R8's, so the flashers can't tell them
+  apart: choose it with `flash.py --board tdeck`.
+
 ## Quick Start
 
 ### Option A: Web Flasher (easiest — no tools required)
@@ -138,6 +154,7 @@ python flash.py --board v3
 python flash.py --board v4
 python flash.py --board v4-r8   # V4 with 8 MB PSRAM (chosen automatically on an R8)
 python flash.py --board v4-tft  # V4 in the Expansion Kit with the touch screen
+python flash.py --board tdeck   # LILYGO T-Deck
 
 # Or flash a local binary
 python flash.py --file rtnode_heltec_v4.bin
@@ -168,6 +185,9 @@ pio run -e rtnode_heltec_v4_r8
 
 # Build for a V4 in the Expansion Kit (touch screen)
 pio run -e rtnode_heltec_v4_tft
+
+# Build for a LILYGO T-Deck
+pio run -e rtnode_tdeck
 
 # Flash (via PlatformIO)
 pio run -e rtnode_heltec_v4 -t upload
