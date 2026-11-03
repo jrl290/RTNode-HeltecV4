@@ -1,0 +1,7 @@
+axiometa-genesis-mini: sx126x pins unresolved: cs, rst, irq, busy
+elecrow-adv-24-28-tft: no variant.h on its include path, skipped
+elecrow-adv-35-tft: no variant.h on its include path, skipped
+elecrow-adv1-43-50-70-tft: no variant.h on its include path, skipped
+meshnology_w12: lr2021 pins unresolved: rst
+picomputer-s3: sx127x pins unresolved: rst
+picomputer-s3-tft: sx127x pins unresolved: rst
