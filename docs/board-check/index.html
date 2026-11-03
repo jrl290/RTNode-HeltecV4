@@ -439,7 +439,7 @@
   ];
   const ISSUES_URL = 'https://github.com/jrl290/RTNode-HeltecV4/issues/new';
   const SIM = new URLSearchParams(location.search).has('sim');
-  const SIM_BOARD = new URLSearchParams(location.search).get('sim');   // '' or 'unknown'
+  const SIM_BOARD = new URLSearchParams(location.search).get('sim');   // '', 'unknown' or 't-deck'
 
   // ── UI refs and helpers ────────────────────────────────────────────────────
   const wizard       = document.getElementById('wizard');
@@ -738,12 +738,29 @@
     return 'We couldn’t find a radio on any of the boards we know.';
   }
   function radioName(r) {
+    // An SX1262 gives the same ID as an SX1261, so the ID can't tell them apart
+    if (/^SX1261 V2D/.test(r.chip || '')) return 'an SX126x';
     const m = /^(SX12\d\d|LLCC68|LR11\d\d)/.exec(r.chip || '');
     return m ? 'an ' + m[1] : 'a ' + r.type.toUpperCase();
   }
 
+  // Meshtastic lists some boards twice, once for each of its builds, with the same
+  // hardware and the same name. The check can't tell those apart, and needn't.
+  function onePerName(f) {
+    if (f.match !== 'several') return f;
+    const byName = new Map();
+    for (const c of f.candidates) {
+      if (byName.has(c.name)) byName.get(c.name).ids.push(c.id);
+      else byName.set(c.name, { ...c, ids: [c.id] });
+    }
+    const list = [...byName.values()];
+    return list.length === 1 ? { ...f, match: 'one', board: list[0], candidates: list }
+                             : { ...f, candidates: list };
+  }
+
   function onFound(f) {
-      R.found = f;
+    f = onePerName(f);
+    R.found = f;
     if (phase === 'connecting') {
       link.send({ cmd: 'wireless' });
       phase = 'found';
@@ -894,8 +911,9 @@
     const f = R.found || {};
     const L = [];
     L.push(`RTNode board check report (${CHECK_VERSION})`);
-    if (f.match === 'one') L.push(`Board: ${f.board.name} (${f.board.id}), found by the check`);
-    else if (f.match === 'several') L.push(`Board: one of ${f.candidates.map(c => c.id).join(', ')}`);
+    const ids = c => (c.ids || [c.id]).join(' / ');
+    if (f.match === 'one') L.push(`Board: ${f.board.name} (${ids(f.board)}), found by the check`);
+    else if (f.match === 'several') L.push(`Board: one of ${f.candidates.map(ids).join(', ')}`);
     else L.push('Board: not found in the board list');
     if (R.userName) L.push(`Name on the board: ${R.userName}`);
     L.push(`Chip: ${R.chip || '?'}, flash ${R.flashMb || '?'} MB, PSRAM ${R.psram || 'unknown'}, USB ${R.usb || '?'} (${R.vidpid || '?'})`);
@@ -974,6 +992,16 @@
           radio: { type: 'sx127x', chip: 'SX1276/7/8/9', pins: { sck: 5, miso: 3, mosi: 6, cs: 7, rst: 8, irq: 33, busy: -1 },
                    rf_switch_dio2: false, busy_ms: -1, errors: '0x0000', oscillator: 'ok', irq: 'ok', irq_ms: 3 },
           power: { chip: 'none', pins: [] }, i2c: [], screen: { type: 'none', drawn: false } }), 1200);
+      } else if (c.cmd === 'probe' && SIM_BOARD === 't-deck') {   // as a real T-Deck answered on 11-03
+        setTimeout(() => this.emit({
+          event: 'found', match: 'several',
+          candidates: [{ id: 't-deck', name: 'LILYGO T-Deck' }, { id: 't-deck-tft', name: 'LILYGO T-Deck' }], radio_tries: 1,
+          radio: { type: 'sx126x', chip: 'SX1261 V2D 2D02', pins: { sck: 40, miso: 38, mosi: 41, cs: 9, rst: 17, irq: 45, busy: 13 },
+                   tcxo_v: 1.8, rf_switch_dio2: true, busy_ms: 2, errors: '0x0000', oscillator: 'ok', irq: 'ok', irq_ms: 16 },
+          power: { chip: 'none', pins: [{ pin: 10, on: 1 }] },
+          i2c: [{ sda: 18, scl: 8, devices: ['0x40', '0x5d'] }],
+          screen: { type: 'st7789', drawn: true, w: 240, h: 320, colour: true },
+          touch: { chip: 'GT911', addr: '0x5d', int: 16 }, buttons_expected: [0, 3, 15, 1, 2], led: -1, battery_mv: 4830 }), 1200);
       } else if (c.cmd === 'probe') {
         this.emit({ event: 'step', step: 'radio' });
         setTimeout(() => this.emit({
