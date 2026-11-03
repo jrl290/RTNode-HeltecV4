@@ -112,7 +112,8 @@ trackball's click is the one button: a short press wakes the screen, more
 than 0.7 s sleeps, more than 5 s restarts into setup. The keyboard, the touch
 screen and rolling the trackball are not used.
 
-- **Run on one T-Deck so far.**
+- **Run on one T-Deck so far.** Checked there: LoRa send and receive, WiFi,
+  Bluetooth, the screen, the button, sleep and wake, and starting on battery.
 - **Use a USB-A cable or hub.** The T-Deck doesn't connect to a Mac over a
   USB-C to USB-C cable: no port appears at all.
 - No USB Ethernet: the T-Deck's one USB port is its power and serial port.

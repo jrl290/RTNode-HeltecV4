@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTNode T-Deck Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --accent:    #5b8af5;
+      --accent-hi: #7ba3ff;
+      --success:   #4caf76;
+      --warn:      #e0a742;
+      --text:      #e2e4ef;
+      --muted:     #8a8fa8;
+      --radius:    10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+      line-height: 1.6;
+    }
+
+    main { max-width: 680px; margin: 0 auto; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.95rem; }
+
+    /* ── Steps ──────────────────────────────────────────── */
+    .step { margin-bottom: 2.2rem; }
+    .step-label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .step-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Flash button ─────────────────────────────────── */
+    .flash-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1.6rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .flash-btn:hover:not(:disabled) { background: var(--accent-hi); }
+    .flash-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    /* ── Detect badge ────────────────────────────────────── */
+    .detect-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.83rem;
+      font-weight: 600;
+      margin-bottom: 0.9rem;
+    }
+    .detect-badge.ok {
+      background: rgba(76, 175, 118, 0.12);
+      border: 1px solid rgba(76, 175, 118, 0.3);
+      color: var(--success);
+    }
+    .detect-badge.err {
+      background: rgba(229, 115, 115, 0.1);
+      border: 1px solid rgba(229, 115, 115, 0.3);
+      color: #e57373;
+    }
+    .detect-badge.info {
+      background: rgba(91, 138, 245, 0.1);
+      border: 1px solid rgba(91, 138, 245, 0.25);
+      color: var(--accent);
+    }
+
+    /* ── Progress ────────────────────────────────────────── */
+    .progress-wrap { margin: 0.75rem 0; }
+    .progress-track {
+      background: var(--border);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: var(--accent);
+      height: 100%;
+      width: 0%;
+      transition: width 0.15s;
+    }
+    .progress-pct {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ── Log area ────────────────────────────────────────── */
+    .log-area {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.8rem;
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.76rem;
+      color: var(--muted);
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* ── Mode toggle ────────────────────────────────────── */
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1.1rem;
+      width: 100%;
+    }
+    .mode-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0.6rem 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .mode-btn:first-child { border-right: 1px solid var(--border); }
+    .mode-btn.active {
+      background: #1c2340;
+      color: var(--text);
+    }
+    .mode-btn .mode-sub {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    .mode-btn.active .mode-sub { color: var(--muted); }
+
+    /* ── Version picker ──────────────────────────────────── */
+    .version-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.1rem;
+    }
+    .version-row label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .version-row select {
+      flex: 1;
+      /* A flex item never shrinks below its longest option by default, and
+         release names are long: let it shrink and cut the text instead. */
+      min-width: 0;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.45rem 2.2rem 0.45rem 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath stroke='%238a8fa8' stroke-width='1.5' fill='none' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+    }
+    .version-row select:focus { outline: none; border-color: var(--accent); }
+    .version-row select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── V4 R8 choice (shown when an 8 MB PSRAM V4 is detected) ── */
+    .r8-row {
+      border: 1px solid var(--warn);
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.85rem;
+    }
+    .r8-row label { cursor: pointer; }
+    .r8-row p { color: var(--muted); margin-top: 0.4rem; font-size: 0.8rem; }
+
+    /* ── Flash section ──────────────────────────────────── */
+    .flash-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+    }
+    .flash-box p { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.1rem; }
+
+
+
+    /* ── Requirements ───────────────────────────────────── */
+    .req-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .req-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+    .req-list li .icon { flex-shrink: 0; }
+    .req-list li .ok  { color: var(--success); }
+    .req-list li .warn { color: var(--warn); }
+
+    /* ── Flash size note ────────────────────────────────── */
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.8rem 1.1rem;
+      font-size: 0.88rem;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      list-style: none;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "▶ "; font-size: 0.7em; }
+    details[open] summary::before { content: "▼ "; }
+    details p { margin-top: 0.7rem; color: var(--muted); line-height: 1.6; }
+    details code {
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.9em;
+    }
+
+    /* ── Button row ───────────────────────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.25rem;
+    }
+    .flash-btn.secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .flash-btn.secondary:hover:not(:disabled) {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Test build notice and the report list ──────────── */
+    .test-note {
+      border: 1px solid var(--warn);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      margin-bottom: 2.2rem;
+      font-size: 0.9rem;
+    }
+    .test-note p + p { margin-top: 0.6rem; }
+    .test-note a, .flash-box a { color: var(--accent); }
+    .confirm-row { display: block; margin-top: 1rem; cursor: pointer; }
+    .confirm-row span { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 0.3rem; }
+    .report-list { padding-left: 1.2rem; font-size: 0.9rem; }
+    .report-list li + li { margin-top: 0.4rem; }
+    .files { font-size: 0.8rem; color: var(--muted); }
+    .files code { word-break: break-all; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>RT</span>Node T-Deck Test</h1>
+    <p>A test build of RTNode for the LILYGO T-Deck. Flash it from your browser &mdash; no
+      Python or tools required.</p>
+  </header>
+
+  <div class="test-note">
+    <p><strong>This is a test build, not a release.</strong> It is RTNode v1.0.54 on the
+      T-Deck. The screen shows the same two panels as a Heltec's small screen, side by side at
+      twice the size: the node's name, frequency and address on the left, the status icons on
+      the right. The trackball's click is RTNode's one button. The keyboard, the touch screen
+      and rolling the trackball do nothing.</p>
+    <p>It has run on one T-Deck so far. For any other board, use the
+      <a href="../">main flasher</a>.</p>
+    <p><strong>Use a USB-A cable or hub.</strong> The T-Deck doesn't connect to a Mac over a
+      USB-C to USB-C cable: no port appears at all.</p>
+  </div>
+
+  <!-- Step 1: Detect -->
+  <section class="step">
+    <div class="step-label">Step 1 &mdash; Detect</div>
+    <div class="flash-box">
+      <p>Connect the T-Deck by USB and switch it on, then click <strong>Detect</strong> and pick its port.</p>
+      <button id="detect-btn" class="flash-btn">Detect</button>
+    </div>
+  </section>
+
+  <!-- Step 2: Flash -->
+  <section class="step">
+    <div class="step-label">Step 2 &mdash; Flash</div>
+    <div class="flash-box">
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-full">
+          First install
+          <span class="mode-sub">Erases everything &mdash; replaces Meshtastic or any other firmware</span>
+        </button>
+        <button class="mode-btn" id="mode-update">
+          Update
+          <span class="mode-sub">App only &mdash; RTNode's settings kept</span>
+        </button>
+      </div>
+
+      <p id="flash-desc"></p>
+
+      <label class="confirm-row"><input type="checkbox" id="is-tdeck"> This is a LILYGO T-Deck.
+        <span>A Heltec V4 R8 looks the same to this page, so it can't check.</span></label>
+
+      <div class="btn-row">
+        <button id="flash-btn" class="flash-btn" disabled>Flash Firmware</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Console -->
+  <section class="step">
+    <div class="step-label">Console</div>
+    <div id="progress-wrap" class="progress-wrap" style="display:none">
+      <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+      <div id="progress-pct" class="progress-pct">0%</div>
+    </div>
+    <div id="log-area" class="log-area" style="display:none"></div>
+  </section>
+
+  <!-- Result -->
+  <div id="detect-status" style="display:none; margin-bottom: 2.2rem"></div>
+
+  <!-- Step 3: Report -->
+  <section class="step">
+    <div class="step-label">Step 3 &mdash; Tell us what you see</div>
+    <div class="flash-box">
+      <p>After flashing, set the node up through its portal: join the WiFi network
+        <strong>RTNode-Setup</strong> and open 10.0.0.1. Then send these to us where you asked
+        for this build:</p>
+      <ol class="report-list">
+        <li>A photo of the screen once it's running.</li>
+        <li>Is it the right way up, with the keyboard at the bottom? Is any text mirrored?</li>
+        <li>Does a short click of the trackball wake the screen?</li>
+        <li>If the screen stays dark or shows noise, say so, and if you can, send the USB
+          serial log from power-up (115200 baud).</li>
+        <li>Anything else that behaves differently from RTNode on a Heltec.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Files -->
+  <section class="step">
+    <div class="step-label">Files</div>
+    <div class="flash-box files">
+      <p>The page checks each image against its SHA-256 before writing it. The source is the
+        <a href="https://github.com/jrl290/RTNode-HeltecV4/tree/feature/t-deck" target="_blank" rel="noopener">feature/t-deck</a>
+        branch of RTNode, GPL-3 like the rest of RTNode.</p>
+      <p><a href="firmware/rtnode_tdeck_merged.bin">rtnode_tdeck_merged.bin</a> (first install, at 0x0)<br>
+        <code>cda2bc466aaf7a92ed82cb648ed4d85c4606329dae9a43ed4ed9c08abd938d37</code></p>
+      <p><a href="firmware/rtnode_tdeck.bin">rtnode_tdeck.bin</a> (update, at 0x10000)<br>
+        <code>24143c164944dca52dc8b5be64e910986de1c204ed69773ea49d0da7c96950db</code></p>
+    </div>
+  </section>
+
+  <!-- Requirements -->
+  <section class="step">
+    <div class="step-label">Requirements</div>
+    <ul class="req-list">
+      <li>
+        <span class="icon ok">&#10003;</span>
+        <span>Google Chrome 89+ or Microsoft Edge &mdash; Web Serial API required
+          (Firefox and Safari are not supported)</span>
+      </li>
+      <li>
+        <span class="icon ok">&#10003;</span>
+        <span>A USB-A cable or hub connected to the T-Deck</span>
+      </li>
+      <li>
+        <span class="icon ok">&#10003;</span>
+        <span>No Python, esptool, or PlatformIO installation needed</span>
+      </li>
+      <li>
+        <span class="icon warn">&#9888;</span>
+        <span>On Linux, you may need to add your user to the <code>dialout</code>
+          group: <code>sudo usermod -a -G dialout $USER</code> (then log out and
+          back in)</span>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>
+    RTNode Firmware &mdash;
+    <a href="https://github.com/jrl290/RTNode-HeltecV4" target="_blank" rel="noopener">
+      GitHub
+    </a>
+    &middot;
+    Powered by
+    <a href="https://github.com/espressif/esptool-js" target="_blank" rel="noopener">
+      esptool-js
+    </a>
+  </p>
+</footer>
+
+<script type="module">
+  import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
+
+  // ── Firmware config: the one test build this page offers ──────────────────
+  const FW = {
+    label:      'LILYGO T-Deck',
+    updateName: 'rtnode_tdeck.bin',
+    fullName:   'rtnode_tdeck_merged.bin',
+    updateAddr: 0x10000,
+    fullAddr:   0x0,
+  };
+  const SHA256 = {
+    'rtnode_tdeck.bin':        '24143c164944dca52dc8b5be64e910986de1c204ed69773ea49d0da7c96950db',
+    'rtnode_tdeck_merged.bin': 'cda2bc466aaf7a92ed82cb648ed4d85c4606329dae9a43ed4ed9c08abd938d37',
+  };
+
+  // ── Detection — the main flasher's rules ───────────────────────────────────
+  // A T-Deck (ESP32-S3FN16R8) reports "Embedded PSRAM 8MB (AP_3v3)", the same
+  // as a Heltec V4 R8, so the person says which it is (the checkbox). A V4
+  // reports 2 MB, a V3 none.
+  function detectKind(chipName, features) {
+    if (!chipName.includes('ESP32-S3')) return 'other';
+    const up = features.map(f => String(f).toUpperCase());
+    if (up.some(f => f.includes('PSRAM 8MB'))) return 'psram8';
+    if (up.some(f => f.includes('PSRAM'))) return 'v4';
+    return 'v3';
+  }
+  const NOT_FOR_THIS_BOARD = {
+    v4:    'This looks like a Heltec V4 (2 MB PSRAM). This build is only for the LILYGO T-Deck.',
+    v3:    'This looks like a Heltec V3 (no PSRAM). This build is only for the LILYGO T-Deck.',
+    other: 'This is not an ESP32-S3 board with 8 MB PSRAM, so it isn\u2019t a T-Deck. This build is only for the LILYGO T-Deck.',
+  };
+
+  // ── UI refs ────────────────────────────────────────────────────────────────
+  const detectBtn    = document.getElementById('detect-btn');
+  const flashBtn     = document.getElementById('flash-btn');
+  const flashDesc    = document.getElementById('flash-desc');
+  const modeUpdate   = document.getElementById('mode-update');
+  const modeFull     = document.getElementById('mode-full');
+  const detectStatus = document.getElementById('detect-status');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-fill');
+  const progressPct  = document.getElementById('progress-pct');
+  const logArea      = document.getElementById('log-area');
+  const isTdeck      = document.getElementById('is-tdeck');
+  isTdeck.addEventListener('change', () => { flashBtn.disabled = !(loader && isTdeck.checked); });
+
+  let currentIsUpdate = false;
+  let transport = null;
+  let loader    = null;
+
+  const FULL_DESC = '⚠️ Erases the whole flash, then writes the full image from 0x0. ' +
+    'Use this if the board runs Meshtastic or anything other than RTNode. Afterwards, set the node up ' +
+    'through its portal (WiFi network RTNode-Setup).';
+  const UPDATE_DESC = 'Writes only the application region (0x10000). RTNode’s saved settings ' +
+    '(LoRa config, identity, WiFi) are kept. Use this only if RTNode is already on the board.';
+  flashDesc.textContent = FULL_DESC;
+
+  modeFull.addEventListener('click', () => {
+    modeFull.classList.add('active'); modeUpdate.classList.remove('active');
+    currentIsUpdate = false; flashDesc.textContent = FULL_DESC;
+  });
+  modeUpdate.addEventListener('click', () => {
+    modeUpdate.classList.add('active'); modeFull.classList.remove('active');
+    currentIsUpdate = true;  flashDesc.textContent = UPDATE_DESC;
+  });
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function log(msg) {
+    logArea.style.display = 'block';
+    logArea.textContent += msg + '\n';
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+  function setBadge(kind, html) {
+    detectStatus.style.display = 'block';
+    detectStatus.innerHTML = `<div class="detect-badge ${kind}">${html}</div>`;
+  }
+  function setProgress(pct) {
+    progressWrap.style.display = 'block';
+    progressFill.style.width = pct + '%';
+    progressPct.textContent = Math.round(pct) + '%';
+  }
+  function makeTerminal() {
+    return {
+      clean()         {},
+      writeLine(data) { log(data); },
+      write(data)     { if (data.trim()) log(data.trim()); },
+    };
+  }
+  async function doDisconnect() {
+    if (transport) { try { await transport.disconnect(); } catch (_) {} transport = null; }
+    loader = null;
+  }
+  async function sha256Hex(bytes) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ── Step 1: Detect ─────────────────────────────────────────────────────────
+  detectBtn.addEventListener('click', async () => {
+    if (!('serial' in navigator)) {
+      setBadge('err', '&#10007; Web Serial not supported &mdash; use Chrome or Edge');
+      return;
+    }
+    await doDisconnect();
+    flashBtn.disabled = true;
+    progressWrap.style.display = 'none';
+    logArea.style.display = 'none'; logArea.textContent = '';
+    detectStatus.style.display = 'none';
+    detectBtn.disabled = true;
+
+    try {
+      const port = await navigator.serial.requestPort();
+      transport  = new Transport(port, false);
+      setBadge('info', '&#9881; Connecting&hellip;');
+      log('Connecting to device...');
+
+      loader = new ESPLoader({ transport, baudrate: 921600, terminal: makeTerminal() });
+      await loader.main('default_reset');
+
+      const chipName    = loader.chip.CHIP_NAME;
+      const features    = await loader.chip.getChipFeatures(loader);
+      const flashSizeKb = await loader.getFlashSize();
+      const flashSize   = flashSizeKb >= 1024 ? (flashSizeKb / 1024) + 'MB' : flashSizeKb + 'KB';
+      const kind        = detectKind(chipName, features);
+
+      log(`Chip:       ${chipName}`);
+      log(`Features:   ${features.join(', ')}`);
+      log(`Flash size: ${flashSize}`);
+
+      if (kind !== 'psram8') {
+        log('Board:      not a T-Deck');
+        setBadge('err', '&#10007; ' + NOT_FOR_THIS_BOARD[kind] +
+          ' Use the <a href="../">main flasher</a> for other boards.');
+        await doDisconnect();
+        return;
+      }
+      log(`Board:      ESP32-S3 with 8 MB PSRAM: a T-Deck, or a Heltec V4 R8`);
+      setBadge('ok', `&#10003; ESP32-S3 with 8 MB PSRAM &mdash; Flash: ${flashSize} &mdash; ` +
+        'tick &ldquo;This is a LILYGO T-Deck&rdquo; to flash');
+      flashBtn.disabled = !isTdeck.checked;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log('Error: ' + msg);
+      setBadge('err', '&#10007; ' + msg);
+      await doDisconnect();
+    } finally {
+      detectBtn.disabled = false;
+    }
+  });
+
+  // ── Step 2: Flash ──────────────────────────────────────────────────────────
+  flashBtn.addEventListener('click', async () => {
+    if (!loader) {
+      setBadge('err', '&#10007; Detect your device first (Step 1).');
+      return;
+    }
+    if (!isTdeck.checked) {
+      setBadge('err', '&#10007; Tick &ldquo;This is a LILYGO T-Deck&rdquo; first.');
+      return;
+    }
+    flashBtn.disabled  = true;
+    detectBtn.disabled = true;
+    progressFill.style.width = '0%';
+    progressWrap.style.display = 'none';
+    logArea.textContent = ''; logArea.style.display = 'block';
+
+    try {
+      const name = currentIsUpdate ? FW.updateName : FW.fullName;
+      const addr = currentIsUpdate ? FW.updateAddr : FW.fullAddr;
+      const binUrl = `firmware/${name}`;
+
+      log(`Build:    ${FW.label} (test build, based on v1.0.54)`);
+      log(`Mode:     ${currentIsUpdate ? 'Update (app only, settings kept)' : 'First install (erase all)'}`);
+      log(`Firmware: ${binUrl}`);
+      const resp = await fetch(binUrl, { cache: 'no-cache' });
+      if (!resp.ok) throw new Error(`Failed to fetch firmware: ${resp.status} ${resp.statusText}`);
+
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      const sha   = await sha256Hex(bytes);
+      log(`Size:     ${bytes.length.toLocaleString()} bytes`);
+      log(`SHA-256:  ${sha}`);
+      if (sha !== SHA256[name]) {
+        throw new Error(`${name} did not download intact (its SHA-256 doesn't match). Reload the page and try again.`);
+      }
+
+      // esptool-js writeFlash requires a binary string, not Uint8Array
+      const binData = Array.from(bytes, b => String.fromCharCode(b)).join('');
+
+      log('Flashing...');
+      setProgress(0);
+      await loader.writeFlash({
+        fileArray: [{ data: binData, address: addr }],
+        flashSize: 'keep',
+        flashMode: 'keep',
+        flashFreq: 'keep',
+        eraseAll:  !currentIsUpdate,
+        compress:  true,
+        reportProgress(_idx, written, total) {
+          setProgress((written / total) * 100);
+        },
+      });
+
+      setProgress(100);
+      log('Flash complete. Rebooting...');
+      await loader.hardReset();
+      setBadge('ok', '&#10003; Done! Switch the T-Deck off and on, then see Step 3.');
+      await doDisconnect();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log('Error: ' + msg);
+      setBadge('err', '&#10007; ' + msg);
+      await doDisconnect();
+    } finally {
+      detectBtn.disabled = false;
+      flashBtn.disabled  = !(loader && isTdeck.checked);
+    }
+  });
+</script>
+</body>
+</html>

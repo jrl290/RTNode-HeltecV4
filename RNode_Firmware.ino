@@ -3388,9 +3388,10 @@ void sleep_now() {
           #endif
       #endif
       #if BOARD_MODEL == BOARD_TDECK
-          // Backlight off, then the radio, screen, keyboard and touch panel.
+          // Backlight off. The peripheral power (pin_poweron) is left on
+          // until the chip sleeps, as LILYGO's own T-Deck sleep does:
+          // switching it off here woke the board again at once.
           digitalWrite(DISPLAY_BL_PIN, LOW);
-          digitalWrite(pin_poweron, LOW);
       #endif
       #if PIN_DISP_SLEEP >= 0
         pinMode(PIN_DISP_SLEEP, OUTPUT);
@@ -3402,7 +3403,13 @@ void sleep_now() {
           delay(100);
         }
       #endif
-      esp_sleep_enable_ext0_wakeup(PIN_WAKEUP, WAKEUP_LEVEL);
+      #if BOARD_MODEL == BOARD_TDECK
+        // ext1 holds the click's pad as it is through sleep, as LILYGO's
+        // T-Deck sleep does.
+        esp_sleep_enable_ext1_wakeup(1ULL << PIN_WAKEUP, ESP_EXT1_WAKEUP_ANY_LOW);
+      #else
+        esp_sleep_enable_ext0_wakeup(PIN_WAKEUP, WAKEUP_LEVEL);
+      #endif
       esp_deep_sleep_start();
     #elif PLATFORM == PLATFORM_NRF52
       #if BOARD_MODEL == BOARD_HELTEC_T114
