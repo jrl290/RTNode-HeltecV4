@@ -1,0 +1,6959 @@
+{
+ "source": "Meshtastic firmware (GPL-3.0), revision e441cb1 2026-11-03",
+ "boards": [
+  {
+   "id": "CDEBYTE_EoRa-Hub",
+   "name": "CDEBYTE_EoRa-Hub",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "quad",
+   "usb": "any",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 9,
+     "miso": 11,
+     "mosi": 10
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    17,
+    10,
+    21
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 35,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 103.0,
+   "adc_ctrl": 37,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    1,
+    35,
+    37,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "CDEBYTE_EoRa-S3",
+   "name": "EBYTE EoRa-S3",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 33,
+     "busy": 34,
+     "tcxo": null,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    17,
+    10,
+    21
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 37,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    11,
+    13,
+    14,
+    37,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "EBYTE_ESP32-S3",
+   "name": "EBYTE_ESP32-S3",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 21,
+    "miso": 39,
+    "mosi": 38
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 14,
+     "rst": 40,
+     "irq": 42,
+     "busy": 41,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 10
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 1,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    11,
+    15,
+    16,
+    17,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "thinknode_g3",
+   "name": "thinknode_g3",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 42,
+    "miso": 41,
+    "mosi": 40
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 21,
+     "irq": 15,
+     "busy": 47,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 45,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    4
+   ],
+   "led": 6,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    5,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    45
+   ]
+  },
+  {
+   "id": "thinknode_m2",
+   "name": "ThinkNode M2",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 10,
+     "rst": 21,
+     "irq": 3,
+     "busy": 14,
+     "tcxo": 3.3,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 46,
+     "on": 1
+    },
+    {
+     "pin": 48,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    16,
+    15,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "sh1106",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    47,
+    4
+   ],
+   "led": 6,
+   "led_on": 1,
+   "battery": 17,
+   "adc_mult": 1.548,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    5,
+    6,
+    7,
+    17,
+    43,
+    44,
+    48
+   ]
+  },
+  {
+   "id": "thinknode_m5",
+   "name": "ThinkNode M5",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 16,
+    "miso": 7,
+    "mosi": 15
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 17,
+     "rst": 6,
+     "irq": 4,
+     "busy": 5,
+     "tcxo": 3.3,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 46,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    2,
+    1,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    21,
+    14
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 8,
+   "adc_mult": 2.0,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    8,
+    9,
+    10,
+    11,
+    12,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "thinknode_m5-inkhud",
+   "name": "thinknode_m5-inkhud",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 16,
+    "miso": 7,
+    "mosi": 15
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 17,
+     "rst": 6,
+     "irq": 4,
+     "busy": 5,
+     "tcxo": 3.3,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 46,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    2,
+    1,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    21,
+    14
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 8,
+   "adc_mult": 2.0,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    8,
+    9,
+    10,
+    11,
+    12,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "thinknode_m7",
+   "name": "thinknode_m7",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 11,
+    "miso": 9,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1110"
+     ],
+     "cs": 12,
+     "rst": 39,
+     "irq": 38,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 11,
+     "miso": 9,
+     "mosi": 10
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    4
+   ],
+   "led": 3,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    14,
+    21,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "thinknode_m9",
+   "name": "ThinkNode M9",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 40,
+    "miso": 38,
+    "mosi": 47
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1110"
+     ],
+     "cs": 39,
+     "rst": 45,
+     "irq": 42,
+     "busy": 41,
+     "tcxo": 3.3,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 40,
+     "miso": 38,
+     "mosi": 47
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    20,
+    21,
+    7,
+    6
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 40,
+    "mosi": 47,
+    "miso": 38,
+    "cs": 16,
+    "dc": 15,
+    "rst": 14,
+    "bl": 17,
+    "bl_on": 0,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 1,
+   "battery": 13,
+   "adc_mult": 2.0,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    9,
+    10,
+    11,
+    12,
+    13,
+    46,
+    48
+   ]
+  },
+  {
+   "id": "thinknode_m9-tft",
+   "name": "ThinkNode M9",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 40,
+    "miso": 38,
+    "mosi": 47
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1110"
+     ],
+     "cs": 39,
+     "rst": 45,
+     "irq": 42,
+     "busy": 41,
+     "tcxo": 3.3,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 40,
+     "miso": 38,
+     "mosi": 47
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    20,
+    21,
+    7,
+    6
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 40,
+    "mosi": 47,
+    "miso": 38,
+    "cs": 16,
+    "dc": 15,
+    "rst": 14,
+    "bl": 17,
+    "bl_on": 0,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 1,
+   "battery": 13,
+   "adc_mult": 2.0,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    9,
+    10,
+    11,
+    12,
+    13,
+    46,
+    48
+   ]
+  },
+  {
+   "id": "axiometa-genesis-mini",
+   "name": "Axiometa Genesis Mini",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 14,
+    "miso": 13,
+    "mosi": 12
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": null,
+     "rst": null,
+     "irq": null,
+     "busy": null,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    10,
+    11,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7735",
+    "sck": 14,
+    "mosi": 12,
+    "miso": 13,
+    "cs": null,
+    "dc": null,
+    "rst": null,
+    "bl": null,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 80,
+    "h": 160
+   },
+   "touch": null,
+   "buttons": [
+    45,
+    0
+   ],
+   "led": 37,
+   "led_on": 1,
+   "battery": 8,
+   "adc_mult": 2.0,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    8,
+    37,
+    46
+   ]
+  },
+  {
+   "id": "bpi_picow_esp32_s3",
+   "name": "bpi_picow_esp32_s3",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 21,
+    "miso": 39,
+    "mosi": 38
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 17,
+     "rst": 42,
+     "irq": 5,
+     "busy": 47,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    12,
+    14,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    40
+   ],
+   "led": 46,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    46
+   ]
+  },
+  {
+   "id": "crowpanel-esp32s3-5-epaper",
+   "name": "crowpanel-esp32s3-5-epaper",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 3,
+    "miso": 9,
+    "mosi": 8
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 38,
+     "irq": 16,
+     "busy": 17,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 7,
+     "on": 1
+    },
+    {
+     "pin": 42,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    21,
+    15,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    2
+   ],
+   "led": 41,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    11,
+    12,
+    18,
+    41,
+    42,
+    45,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "crowpanel-esp32s3-4-epaper",
+   "name": "crowpanel-esp32s3-4-epaper",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 3,
+    "miso": 9,
+    "mosi": 8
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 38,
+     "irq": 16,
+     "busy": 17,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 7,
+     "on": 1
+    },
+    {
+     "pin": 42,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    21,
+    15,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    2
+   ],
+   "led": 41,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    11,
+    12,
+    18,
+    41,
+    42,
+    45,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "crowpanel-esp32s3-2-epaper",
+   "name": "crowpanel-esp32s3-2-epaper",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 3,
+    "miso": 9,
+    "mosi": 8
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 38,
+     "irq": 16,
+     "busy": 17,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 7,
+     "on": 1
+    },
+    {
+     "pin": 42,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    21,
+    15,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    2
+   ],
+   "led": 41,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    11,
+    12,
+    18,
+    41,
+    42,
+    45,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "my-esp32s3-diy-eink",
+   "name": "my-esp32s3-diy-eink",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 16,
+     "busy": 15,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    17,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    13
+   ]
+  },
+  {
+   "id": "my-esp32s3-diy-oled",
+   "name": "my-esp32s3-diy-oled",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 16,
+     "busy": 15,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    17,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": []
+  },
+  {
+   "id": "t-energy-s3_e22",
+   "name": "t-energy-s3_e22",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 6,
+    "miso": 4,
+    "mosi": 13
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 5,
+     "rst": 1,
+     "irq": 47,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": false,
+     "txen": 10,
+     "rxen": 12
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    42,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    39
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 3,
+   "adc_mult": 2.0,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "dreamcatcher-2206",
+   "name": "dreamcatcher-2206",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1120"
+     ],
+     "cs": 14,
+     "rst": 3,
+     "irq": 4,
+     "busy": 47,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 12,
+     "miso": 13,
+     "mosi": 11
+    }
+   ],
+   "power": [
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    16,
+    17,
+    45,
+    46
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": 8
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 6,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    5,
+    6,
+    7,
+    37,
+    38,
+    39,
+    40,
+    48
+   ]
+  },
+  {
+   "id": "ESP32-S3-Pico",
+   "name": "ESP32-S3-Pico",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 35,
+    "miso": 37,
+    "mosi": 36
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 40,
+     "irq": 4,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    15,
+    16,
+    17,
+    18
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 3.1,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    7,
+    33,
+    34,
+    38,
+    42
+   ]
+  },
+  {
+   "id": "hackaday-communicator",
+   "name": "hackaday-communicator",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 8,
+    "miso": 9,
+    "mosi": 3
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 17,
+     "rst": 18,
+     "irq": 16,
+     "busy": 15,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    47,
+    14,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    13,
+    39,
+    41
+   ]
+  },
+  {
+   "id": "heltec_capsule_sensor_v3",
+   "name": "heltec_capsule_sensor_v3",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    1,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    18
+   ],
+   "led": 33,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 36,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    4,
+    5,
+    7,
+    21,
+    33,
+    34,
+    35,
+    36
+   ]
+  },
+  {
+   "id": "heltec-rc32",
+   "name": "Heltec RC32",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 11,
+    "miso": 13,
+    "mosi": 12
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 10,
+     "rst": 9,
+     "irq": 14,
+     "busy": 1,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 6,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    21,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 47,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 4.9,
+   "adc_ctrl": 15,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    2,
+    4,
+    5,
+    6,
+    7,
+    15,
+    16,
+    17,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "heltec_sensor_hub",
+   "name": "heltec_sensor_hub",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    1,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    17
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 34,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    7,
+    20,
+    33,
+    34
+   ]
+  },
+  {
+   "id": "heltec-v3",
+   "name": "Heltec V3",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 36,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    41,
+    42
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": 21
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 35,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 37,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    1,
+    35,
+    37
+   ]
+  },
+  {
+   "id": "heltec-v4",
+   "name": "Heltec V4",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 36,
+     "on": 0
+    },
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    4,
+    3
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": 21
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 35,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 37,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    5,
+    7,
+    34,
+    35,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    46
+   ]
+  },
+  {
+   "id": "heltec-v4-tft",
+   "name": "Heltec V4 TFT",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 36,
+     "on": 0
+    },
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    4,
+    3,
+    47,
+    48
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 17,
+    "mosi": 33,
+    "miso": -1,
+    "cs": 15,
+    "dc": 16,
+    "rst": 18,
+    "bl": 21,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": {
+    "int": -1,
+    "rst": 44,
+    "addr": 46,
+    "bus": 1
+   },
+   "buttons": [
+    0,
+    35
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 37,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    5,
+    6,
+    7,
+    34,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    44,
+    46
+   ]
+  },
+  {
+   "id": "heltec-v4-r8-oled",
+   "name": "Heltec V4 R8",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 40,
+     "on": 0
+    },
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": 21
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 46,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.0715,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    5,
+    7,
+    38,
+    39,
+    41,
+    42,
+    46
+   ]
+  },
+  {
+   "id": "heltec-v4-r8-tft",
+   "name": "Heltec V4 R8 TFT",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 40,
+     "on": 0
+    },
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 16,
+    "mosi": 15,
+    "miso": 45,
+    "cs": 47,
+    "dc": 48,
+    "rst": 21,
+    "bl": 44,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": {
+    "int": -1,
+    "rst": -1,
+    "addr": 46,
+    "bus": 0
+   },
+   "buttons": [
+    0,
+    46
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.0715,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    38,
+    39,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "heltec-vision-master-e213",
+   "name": "Heltec Vision Master E213",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    21
+   ],
+   "led": 45,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.047000000000001,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "heltec-vision-master-e213-inkhud",
+   "name": "heltec-vision-master-e213-inkhud",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    21
+   ],
+   "led": 45,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.047000000000001,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "heltec-vision-master-e290",
+   "name": "Heltec Vision Master E290",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    21
+   ],
+   "led": 45,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.047000000000001,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "heltec-vision-master-e290-inkhud",
+   "name": "heltec-vision-master-e290-inkhud",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    21
+   ],
+   "led": 45,
+   "led_on": 1,
+   "battery": 7,
+   "adc_mult": 5.047000000000001,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "heltec-vision-master-t190",
+   "name": "Heltec Vision Master T190",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 5,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    2,
+    1,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    21
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 6,
+   "adc_mult": 5.047000000000001,
+   "adc_ctrl": 46,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    4,
+    6,
+    7,
+    17,
+    38,
+    40,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "heltec-wireless-paper",
+   "name": "Heltec Wireless Paper",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 45,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    41,
+    42,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 20,
+   "adc_mult": 2,
+   "adc_ctrl": 19,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "id": "heltec-wireless-paper-inkhud",
+   "name": "heltec-wireless-paper-inkhud",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 45,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    41,
+    42,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 20,
+   "adc_mult": 2,
+   "adc_ctrl": 19,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "id": "heltec-wireless-paper-v1_0",
+   "name": "Heltec Wireless Paper V1.0",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 45,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    41,
+    42,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 20,
+   "adc_mult": 2,
+   "adc_ctrl": 19,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "id": "heltec-wireless-tracker",
+   "name": "Heltec Wireless Tracker V1.1",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 3,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    45,
+    46,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7735",
+    "sck": 41,
+    "mosi": 42,
+    "miso": -1,
+    "cs": 38,
+    "dc": 40,
+    "rst": 39,
+    "bl": 21,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 80,
+    "h": 160
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    18,
+    33,
+    34,
+    35,
+    36
+   ]
+  },
+  {
+   "id": "heltec-wireless-tracker-V1-0",
+   "name": "Heltec Wireless Tracker V1.0",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 36,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    5,
+    6,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7735",
+    "sck": 41,
+    "mosi": 42,
+    "miso": -1,
+    "cs": 38,
+    "dc": 40,
+    "rst": 39,
+    "bl": 45,
+    "bl_on": 1,
+    "power": 46,
+    "power_on": 0,
+    "w": 80,
+    "h": 160
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    18,
+    33,
+    34,
+    35,
+    36,
+    37
+   ]
+  },
+  {
+   "id": "heltec-wireless-tracker-v2",
+   "name": "Heltec Wireless Tracker V2",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 3,
+     "on": 1
+    },
+    {
+     "pin": 7,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    6,
+    17,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7735",
+    "sck": 41,
+    "mosi": 42,
+    "miso": -1,
+    "cs": 38,
+    "dc": 40,
+    "rst": 39,
+    "bl": 21,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 80,
+    "h": 160
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    4,
+    5,
+    7,
+    18,
+    33,
+    34,
+    35,
+    36
+   ]
+  },
+  {
+   "id": "heltec-wsl-v3",
+   "name": "Heltec Wireless Stick Lite V3",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 36,
+     "on": 0
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    41,
+    42,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 35,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 5.1205,
+   "adc_ctrl": 37,
+   "adc_ctrl_on": 0,
+   "other_pins": [
+    1,
+    35,
+    37
+   ]
+  },
+  {
+   "id": "icarus",
+   "name": "icarus",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 21,
+    "miso": 39,
+    "mosi": 38
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 17,
+     "rst": 42,
+     "irq": 5,
+     "busy": 47,
+     "tcxo": null,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    9,
+    18,
+    6
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    7
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": []
+  },
+  {
+   "id": "link32-s3-v1",
+   "name": "link32-s3-v1",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 16,
+    "miso": 33,
+    "mosi": 34
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 21,
+     "rst": 18,
+     "irq": 13,
+     "busy": 14,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    47,
+    48,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    36
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 15,
+   "adc_mult": 2,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    12,
+    15
+   ]
+  },
+  {
+   "id": "m5stack-cardputer-adv",
+   "name": "m5stack-cardputer-adv",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 40,
+    "miso": 39,
+    "mosi": 14
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 5,
+     "rst": 3,
+     "irq": 4,
+     "busy": 6,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    9,
+    2,
+    1
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 10,
+   "adc_mult": 2.04,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    10,
+    11,
+    13,
+    15,
+    33,
+    34,
+    35,
+    36,
+    38,
+    41,
+    42,
+    43,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "m5stack-cores3",
+   "name": "m5stack-cores3",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 35,
+    "mosi": 37
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 6,
+     "rst": 5,
+     "irq": 14,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    12,
+    11,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": []
+  },
+  {
+   "id": "makerfabs_nomad_terminal",
+   "name": "Makerfabs Nomad Terminal",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 6,
+    "miso": 20,
+    "mosi": 19
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 11,
+     "rst": 14,
+     "irq": 13,
+     "busy": 8,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 6,
+     "miso": 20,
+     "mosi": 19
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    },
+    {
+     "pin": 2,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 41,
+    "rst": 42,
+    "addr": 56,
+    "bus": 0
+   },
+   "buttons": [
+    21
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    9,
+    10,
+    12,
+    15,
+    16,
+    17,
+    40,
+    41,
+    42,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "makerfabs_nomad_terminal-tft",
+   "name": "Makerfabs Nomad Terminal",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 6,
+    "miso": 20,
+    "mosi": 19
+   },
+   "radios": [
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 11,
+     "rst": 14,
+     "irq": 13,
+     "busy": 8,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 6,
+     "miso": 20,
+     "mosi": 19
+    }
+   ],
+   "power": [
+    {
+     "pin": 18,
+     "on": 1
+    },
+    {
+     "pin": 2,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    38,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 41,
+    "rst": 42,
+    "addr": 56,
+    "bus": 0
+   },
+   "buttons": [
+    21
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    9,
+    10,
+    12,
+    15,
+    16,
+    17,
+    40,
+    41,
+    42,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "mesh-tab-3-2-TN-resistive",
+   "name": "mesh-tab-3-2-TN-resistive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-3-2-IPS-resistive",
+   "name": "mesh-tab-3-2-IPS-resistive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-3-5-IPS-resistive",
+   "name": "mesh-tab-3-5-IPS-resistive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-3-5-TN-resistive",
+   "name": "mesh-tab-3-5-TN-resistive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-3-2-IPS-capacitive",
+   "name": "mesh-tab-3-2-IPS-capacitive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-3-5-IPS-capacitive",
+   "name": "mesh-tab-3-5-IPS-capacitive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "mesh-tab-4-0-IPS-capacitive",
+   "name": "mesh-tab-4-0-IPS-capacitive",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 37,
+    "mosi": 35
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 39,
+     "rst": 14,
+     "irq": 15,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 47
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 21,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 1.6,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    21,
+    41,
+    42
+   ]
+  },
+  {
+   "id": "meshnology_w10",
+   "name": "Meshnology W10",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 11,
+    "mosi": 13
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 103,
+     "irq": 109,
+     "busy": 110,
+     "tcxo": null,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    7,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 12,
+    "mosi": 13,
+    "miso": 11,
+    "cs": 10,
+    "dc": 16,
+    "rst": -1,
+    "bl": 6,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 240
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    9,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "meshnology_w12",
+   "name": "Meshnology W12",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "lr2021",
+     "chips": [
+      "LR2021"
+     ],
+     "cs": 8,
+     "rst": null,
+     "irq": 14,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 45,
+     "on": 0
+    },
+    {
+     "pin": 4,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 4.9,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    4,
+    12,
+    13
+   ]
+  },
+  {
+   "id": "mini-epaper-s3",
+   "name": "LILYGO Mini ePaper S3 E-Ink",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 8,
+    "miso": 6,
+    "mosi": 17
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 21,
+     "irq": 5,
+     "busy": 16,
+     "tcxo": 1.8,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    9,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 1,
+   "battery": 2,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    2,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    40,
+    42
+   ]
+  },
+  {
+   "id": "mini-epaper-s3-inkhud",
+   "name": "mini-epaper-s3-inkhud",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 8,
+    "miso": 6,
+    "mosi": 17
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 21,
+     "irq": 5,
+     "busy": 16,
+     "tcxo": 1.8,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    9,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [],
+   "led": null,
+   "led_on": 1,
+   "battery": 2,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    2,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    40,
+    42
+   ]
+  },
+  {
+   "id": "nibble-esp32",
+   "name": "nibble-esp32",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 6,
+    "miso": 7,
+    "mosi": 8
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 9,
+     "rst": 4,
+     "irq": 5,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    11,
+    10,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 1,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1
+   ]
+  },
+  {
+   "id": "nugget-s3-lora",
+   "name": "nugget-s3-lora",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 6,
+    "miso": 7,
+    "mosi": 8
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 9,
+     "rst": 4,
+     "irq": 16,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    35,
+    36,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    43,
+    44,
+    13,
+    18,
+    11,
+    12
+   ],
+   "led": 15,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    15
+   ]
+  },
+  {
+   "id": "picomputer-s3",
+   "name": "Pi Computer S3",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 21,
+    "miso": 39,
+    "mosi": 38
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 40,
+     "rst": null,
+     "irq": 10,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 3,
+    "mosi": 4,
+    "miso": -1,
+    "cs": 6,
+    "dc": 1,
+    "rst": -1,
+    "bl": 5,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": 3.1,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    43
+   ]
+  },
+  {
+   "id": "picomputer-s3-tft",
+   "name": "Pi Computer S3",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 21,
+    "miso": 39,
+    "mosi": 38
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 40,
+     "rst": null,
+     "irq": 10,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    9,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 3,
+    "mosi": 4,
+    "miso": -1,
+    "cs": 6,
+    "dc": 1,
+    "rst": -1,
+    "bl": 5,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": 3.1,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    43
+   ]
+  },
+  {
+   "id": "rak3312",
+   "name": "RAK3312",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 47,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 14,
+     "on": 1
+    },
+    {
+     "pin": 4,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    9,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [],
+   "led": 46,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 1.667,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    14,
+    43,
+    44,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "rak3112",
+   "name": "rak3112",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 47,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    9,
+    40,
+    17,
+    18
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [],
+   "led": 46,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    12,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "rak_wismesh_tap_v2",
+   "name": "RAK WisMesh Tap V2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 47,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 14,
+     "on": 1
+    },
+    {
+     "pin": 4,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    9,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 46,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 1.667,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    4,
+    10,
+    11,
+    12,
+    13,
+    14,
+    38,
+    43,
+    44,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "rak_wismesh_tap_v2-tft",
+   "name": "RAK WisMesh Tap V2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 47,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 14,
+     "on": 1
+    },
+    {
+     "pin": 4,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    9,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "none"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 46,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 1.667,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    4,
+    10,
+    11,
+    12,
+    13,
+    14,
+    38,
+    39,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "seeed-sensecap-indicator",
+   "name": "Seeed SenseCAP Indicator",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 41,
+    "miso": 47,
+    "mosi": 48
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 64,
+     "rst": 65,
+     "irq": 67,
+     "busy": 66,
+     "tcxo": 2.4,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 70,
+    "rst": 71,
+    "addr": 72,
+    "bus": 0
+   },
+   "buttons": [
+    38
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    19,
+    20,
+    42,
+    45
+   ]
+  },
+  {
+   "id": "seeed-sensecap-indicator-tft",
+   "name": "Seeed SenseCAP Indicator",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 41,
+    "miso": 47,
+    "mosi": 48
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 64,
+     "rst": 65,
+     "irq": 67,
+     "busy": 66,
+     "tcxo": 2.4,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 70,
+    "rst": 71,
+    "addr": 72,
+    "bus": 0
+   },
+   "buttons": [
+    38
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    19,
+    20,
+    42,
+    45
+   ]
+  },
+  {
+   "id": "seeed_wio_tracker_L2",
+   "name": "Seeed Wio Tracker L2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 4,
+    "miso": 5,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 21,
+     "rst": 7,
+     "irq": 9,
+     "busy": 8,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    47,
+    48,
+    13,
+    14
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 46,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    10,
+    11,
+    12,
+    15,
+    16,
+    17,
+    18,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "seeed_wio_tracker_L2-tft",
+   "name": "Seeed Wio Tracker L2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 4,
+    "miso": 5,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 21,
+     "rst": 7,
+     "irq": 9,
+     "busy": 8,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    47,
+    48,
+    13,
+    14
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": 46,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    3,
+    10,
+    11,
+    12,
+    15,
+    16,
+    17,
+    18,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "seeed-xiao-s3",
+   "name": "Seeed Xiao ESP32-S3",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 7,
+    "miso": 8,
+    "mosi": 9
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 41,
+     "rst": 42,
+     "irq": 39,
+     "busy": 40,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 38
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    5,
+    6,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    21
+   ],
+   "led": 48,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    43,
+    44,
+    48
+   ]
+  },
+  {
+   "id": "station-g2",
+   "name": "Station G2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 14,
+    "mosi": 13
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 11,
+     "rst": 21,
+     "irq": 48,
+     "busy": 47,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    5,
+    6,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "sh1107",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    38
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": []
+  },
+  {
+   "id": "station-g3",
+   "name": "Station G3",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 14,
+    "mosi": 13
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 11,
+     "rst": 21,
+     "irq": 48,
+     "busy": 47,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    5,
+    6,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "sh1107",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    38
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": []
+  },
+  {
+   "id": "t-beam-1w",
+   "name": "LILYGO T-Beam 1W",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 13,
+    "miso": 12,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 15,
+     "rst": 3,
+     "irq": 1,
+     "busy": 38,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 21
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 15,
+     "rst": 3,
+     "irq": 21,
+     "busy": 38,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": null,
+     "miso": null,
+     "mosi": null
+    },
+    {
+     "type": "lr2021",
+     "chips": [
+      "LR2021"
+     ],
+     "cs": 15,
+     "rst": 3,
+     "irq": 1,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 40,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    9,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "sh1106",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    17
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 2.9333,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    4,
+    5,
+    6,
+    7,
+    10,
+    14,
+    16,
+    18,
+    40,
+    41
+   ]
+  },
+  {
+   "id": "t-beam-bpf",
+   "name": "LILYGO T-Beam BPF",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 1,
+     "rst": 18,
+     "irq": 14,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": 39
+    }
+   ],
+   "power": [
+    {
+     "pin": 16,
+     "on": 1
+    }
+   ],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    8,
+    9,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "sh1106",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0,
+    3
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    4,
+    5,
+    6,
+    7,
+    10,
+    16,
+    21
+   ]
+  },
+  {
+   "id": "t-connect-pro",
+   "name": "LILYGO T-Connect Pro",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 14,
+     "rst": 42,
+     "irq": 45,
+     "busy": 38,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7796",
+    "sck": 12,
+    "mosi": 11,
+    "miso": 13,
+    "cs": 21,
+    "dc": 41,
+    "rst": -1,
+    "bl": 46,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 222,
+    "h": 480
+   },
+   "touch": {
+    "int": 3,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    3,
+    9,
+    10,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "t-deck",
+   "name": "LILYGO T-Deck",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 40,
+    "miso": 38,
+    "mosi": 41
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 9,
+     "rst": 17,
+     "irq": 45,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 10,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    8,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 40,
+    "mosi": 41,
+    "miso": 38,
+    "cs": 12,
+    "dc": 11,
+    "rst": -1,
+    "bl": 42,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": {
+    "int": 16,
+    "rst": null,
+    "addr": 93,
+    "bus": 0
+   },
+   "buttons": [
+    0,
+    3,
+    15,
+    1,
+    2
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    4,
+    5,
+    6,
+    7,
+    10,
+    14,
+    16,
+    21,
+    39,
+    43,
+    44,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "t-deck-tft",
+   "name": "LILYGO T-Deck",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 40,
+    "miso": 38,
+    "mosi": 41
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 9,
+     "rst": 17,
+     "irq": 45,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 10,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    8,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 40,
+    "mosi": 41,
+    "miso": 38,
+    "cs": 12,
+    "dc": 11,
+    "rst": -1,
+    "bl": 42,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": {
+    "int": 16,
+    "rst": null,
+    "addr": 93,
+    "bus": 0
+   },
+   "buttons": [
+    0,
+    3,
+    15,
+    1,
+    2
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": 4,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    4,
+    5,
+    6,
+    7,
+    10,
+    14,
+    16,
+    21,
+    39,
+    43,
+    44,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "t-deck-pro",
+   "name": "LILYGO T-Deck Pro",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 47,
+    "mosi": 33
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 3,
+     "rst": 4,
+     "irq": 5,
+     "busy": 6,
+     "tcxo": 2.4,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    13,
+    14,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    12,
+    15,
+    17,
+    18,
+    34,
+    35,
+    37,
+    38,
+    42,
+    43,
+    44,
+    45,
+    46,
+    48
+   ]
+  },
+  {
+   "id": "t-deck-pro-v1_1",
+   "name": "LILYGO T-Deck Pro",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 36,
+    "miso": 47,
+    "mosi": 33
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 3,
+     "rst": 4,
+     "irq": 5,
+     "busy": 6,
+     "tcxo": 2.4,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    13,
+    14,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    12,
+    16,
+    17,
+    18,
+    34,
+    35,
+    37,
+    38,
+    39,
+    42,
+    43,
+    44,
+    45,
+    46,
+    48
+   ]
+  },
+  {
+   "id": "t-eth-elite",
+   "name": "t-eth-elite",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 10,
+    "miso": 9,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 40,
+     "rst": 46,
+     "irq": 8,
+     "busy": 16,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 40,
+     "rst": 46,
+     "irq": 8,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 40,
+     "rst": 46,
+     "irq": 8,
+     "busy": 16,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": 38,
+     "rxen": 13
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 40,
+     "rst": 46,
+     "irq": 8,
+     "busy": 16,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 10,
+     "miso": 9,
+     "mosi": 11
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    17,
+    18,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 38,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    14,
+    21,
+    33,
+    34,
+    39,
+    42,
+    45,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "t-watch-s3",
+   "name": "LILYGO T-Watch S3",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 3,
+    "miso": 4,
+    "mosi": 1
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 5,
+     "rst": 8,
+     "irq": 9,
+     "busy": 7,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    10,
+    11,
+    39,
+    40
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 18,
+    "mosi": 13,
+    "miso": -1,
+    "cs": 12,
+    "dc": 38,
+    "rst": -1,
+    "bl": 45,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 240
+   },
+   "touch": {
+    "int": 16,
+    "rst": null,
+    "addr": 56,
+    "bus": 1
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    14,
+    15,
+    16,
+    21,
+    41,
+    42,
+    46,
+    48
+   ]
+  },
+  {
+   "id": "t-watch-ultra",
+   "name": "T-Watch Ultra",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 35,
+    "miso": 33,
+    "mosi": 34
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 12,
+    "rst": null,
+    "addr": 26,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    21,
+    37,
+    40,
+    41,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "t-watch-ultra-tft",
+   "name": "T-Watch Ultra",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 35,
+    "miso": 33,
+    "mosi": 34
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": 12,
+    "rst": null,
+    "addr": 26,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    21,
+    37,
+    40,
+    41,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "t5s3_epaper_inkhud",
+   "name": "LilyGo T5 E-paper S3 Pro V2",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 14,
+    "miso": 21,
+    "mosi": 13
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 46,
+     "rst": 1,
+     "irq": 10,
+     "busy": 47,
+     "tcxo": 2.4,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    39,
+    40,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": {
+    "int": 3,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    2,
+    3,
+    9,
+    11,
+    12,
+    38,
+    43,
+    44
+   ]
+  },
+  {
+   "id": "tbeam-s3-core",
+   "name": "LILYGO T-Beam Supreme",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 10,
+     "rst": 5,
+     "irq": 1,
+     "busy": 4,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 10,
+     "rst": 5,
+     "irq": 2,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 10,
+     "rst": 5,
+     "irq": 1,
+     "busy": 4,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 12,
+     "miso": 13,
+     "mosi": 11
+    }
+   ],
+   "power": [],
+   "pmu": "axp2101",
+   "pmu_bus": 1,
+   "i2c": [
+    17,
+    18,
+    42,
+    41
+   ],
+   "screen": {
+    "type": "sh1106",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    6,
+    7,
+    8,
+    9,
+    40
+   ]
+  },
+  {
+   "id": "tlora-pager",
+   "name": "LILYGO T-LoRa Pager",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 35,
+    "miso": 33,
+    "mosi": 34
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 35,
+     "miso": 33,
+     "mosi": 34
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7796",
+    "sck": 35,
+    "mosi": 34,
+    "miso": 33,
+    "cs": 38,
+    "dc": 37,
+    "rst": -1,
+    "bl": 42,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 222,
+    "h": 480
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    17,
+    18,
+    21,
+    39,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "tlora-pager-tft",
+   "name": "LILYGO T-LoRa Pager",
+   "supported": true,
+   "flash_mb": 16,
+   "psram": "quad",
+   "usb": "native",
+   "lora": {
+    "sck": 35,
+    "miso": 33,
+    "mosi": 34
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262",
+      "SX1268"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 36,
+     "rst": 47,
+     "irq": 14,
+     "busy": 48,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 35,
+     "miso": 33,
+     "mosi": 34
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    2,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7796",
+    "sck": 35,
+    "mosi": 34,
+    "miso": 33,
+    "cs": 38,
+    "dc": 37,
+    "rst": -1,
+    "bl": 42,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 222,
+    "h": 480
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    17,
+    18,
+    21,
+    39,
+    45,
+    46
+   ]
+  },
+  {
+   "id": "tlora-t3s3-epaper",
+   "name": "LILYGO T-LoRa T3-S3 E-Ink",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 33,
+     "busy": 34,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": 36,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": 10,
+     "rxen": 21
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    12,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "eink"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 37,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    11,
+    14,
+    15,
+    16,
+    37,
+    43,
+    44,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "tlora-t3s3-epaper-inkhud",
+   "name": "tlora-t3s3-epaper-inkhud",
+   "supported": false,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 33,
+     "busy": 34,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": 36,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": 10,
+     "rxen": 21
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    12,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "oled_maybe",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 37,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    11,
+    14,
+    15,
+    16,
+    37,
+    43,
+    44,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "tlora-t3s3-v1",
+   "name": "LILYGO T-LoRa T3-S3",
+   "supported": true,
+   "flash_mb": 4,
+   "psram": "yes",
+   "usb": "native",
+   "lora": {
+    "sck": 5,
+    "miso": 3,
+    "mosi": 6
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 33,
+     "busy": 34,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    },
+    {
+     "type": "sx128x",
+     "chips": [
+      "SX1280"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 9,
+     "busy": 36,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": 10,
+     "rxen": 21
+    },
+    {
+     "type": "lr11xx",
+     "chips": [
+      "LR1121"
+     ],
+     "cs": 7,
+     "rst": 8,
+     "irq": 36,
+     "busy": 34,
+     "tcxo": 3.0,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null,
+     "sck": 5,
+     "miso": 3,
+     "mosi": 6
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    18,
+    17,
+    43,
+    44
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 37,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 2.11,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    37
+   ]
+  },
+  {
+   "id": "tracksenger",
+   "name": "TrackSenger (small TFT)",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 3,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    45,
+    46,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7735",
+    "sck": 41,
+    "mosi": 42,
+    "miso": -1,
+    "cs": 38,
+    "dc": 40,
+    "rst": 39,
+    "bl": 21,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 80,
+    "h": 160
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 4.9,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    18,
+    33,
+    34,
+    35,
+    36,
+    43
+   ]
+  },
+  {
+   "id": "tracksenger-lcd",
+   "name": "TrackSenger (big TFT)",
+   "supported": false,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 3,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "st7789",
+    "sck": 41,
+    "mosi": 42,
+    "miso": -1,
+    "cs": 38,
+    "dc": 40,
+    "rst": -1,
+    "bl": 21,
+    "bl_on": 1,
+    "power": null,
+    "power_on": 0,
+    "w": 240,
+    "h": 320
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 4.9,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    18,
+    33,
+    34,
+    35,
+    36,
+    43
+   ]
+  },
+  {
+   "id": "tracksenger-oled",
+   "name": "TrackSenger (big OLED)",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "none",
+   "usb": "native",
+   "lora": {
+    "sck": 9,
+    "miso": 11,
+    "mosi": 10
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 8,
+     "rst": 12,
+     "irq": 14,
+     "busy": 13,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [
+    {
+     "pin": 3,
+     "on": 1
+    }
+   ],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    42,
+    41,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "ssd1306",
+    "rst": null
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": 18,
+   "led_on": 1,
+   "battery": 1,
+   "adc_mult": 4.9,
+   "adc_ctrl": 2,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    2,
+    18,
+    21,
+    33,
+    34,
+    35,
+    36,
+    43
+   ]
+  },
+  {
+   "id": "unphone",
+   "name": "unPhone",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 39,
+    "miso": 41,
+    "mosi": 40
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 44,
+     "rst": 42,
+     "irq": 10,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    4,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0,
+    21,
+    45
+   ],
+   "led": 13,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    11,
+    13,
+    38,
+    43,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "unphone-tft",
+   "name": "unPhone",
+   "supported": true,
+   "flash_mb": 8,
+   "psram": "octal",
+   "usb": "bridge",
+   "lora": {
+    "sck": 39,
+    "miso": 41,
+    "mosi": 40
+   },
+   "radios": [
+    {
+     "type": "sx127x",
+     "chips": [
+      "RF95"
+     ],
+     "cs": 44,
+     "rst": 42,
+     "irq": 10,
+     "busy": null,
+     "tcxo": null,
+     "rf_switch": false,
+     "txen": null,
+     "rxen": null
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    3,
+    4,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": {
+    "int": null,
+    "rst": null,
+    "addr": null,
+    "bus": 0
+   },
+   "buttons": [
+    0,
+    21,
+    45
+   ],
+   "led": 13,
+   "led_on": 0,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    1,
+    11,
+    13,
+    38,
+    43,
+    46,
+    47,
+    48
+   ]
+  },
+  {
+   "id": "visualizer-hub75",
+   "name": "visualizer-hub75",
+   "supported": false,
+   "flash_mb": 16,
+   "psram": "octal",
+   "usb": "native",
+   "lora": {
+    "sck": 12,
+    "miso": 13,
+    "mosi": 11
+   },
+   "radios": [
+    {
+     "type": "sx126x",
+     "chips": [
+      "SX1262"
+     ],
+     "cs": 10,
+     "rst": 9,
+     "irq": 40,
+     "busy": 14,
+     "tcxo": 1.8,
+     "rf_switch": true,
+     "txen": null,
+     "rxen": 39
+    }
+   ],
+   "power": [],
+   "pmu": null,
+   "pmu_bus": 0,
+   "i2c": [
+    41,
+    42,
+    null,
+    null
+   ],
+   "screen": {
+    "type": "tft_other"
+   },
+   "touch": null,
+   "buttons": [
+    0
+   ],
+   "led": null,
+   "led_on": 1,
+   "battery": null,
+   "adc_mult": null,
+   "adc_ctrl": null,
+   "adc_ctrl_on": 1,
+   "other_pins": [
+    5,
+    38
+   ]
+  }
+ ]
+}
