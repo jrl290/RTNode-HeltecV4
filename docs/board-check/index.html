@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTNode Board Check</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --accent:    #5b8af5;
+      --accent-hi: #7ba3ff;
+      --success:   #4caf76;
+      --warn:      #e0a742;
+      --text:      #e2e4ef;
+      --muted:     #8a8fa8;
+      --radius:    10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+      line-height: 1.6;
+    }
+
+    main { max-width: 680px; margin: 0 auto; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.95rem; }
+
+    /* ── Steps ──────────────────────────────────────────── */
+    .step { margin-bottom: 2.2rem; }
+    .step-label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .step-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Flash button ─────────────────────────────────── */
+    .flash-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1.6rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .flash-btn:hover:not(:disabled) { background: var(--accent-hi); }
+    .flash-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    /* ── Detect badge ────────────────────────────────────── */
+    .detect-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.83rem;
+      font-weight: 600;
+      margin-bottom: 0.9rem;
+    }
+    .detect-badge.ok {
+      background: rgba(76, 175, 118, 0.12);
+      border: 1px solid rgba(76, 175, 118, 0.3);
+      color: var(--success);
+    }
+    .detect-badge.err {
+      background: rgba(229, 115, 115, 0.1);
+      border: 1px solid rgba(229, 115, 115, 0.3);
+      color: #e57373;
+    }
+    .detect-badge.info {
+      background: rgba(91, 138, 245, 0.1);
+      border: 1px solid rgba(91, 138, 245, 0.25);
+      color: var(--accent);
+    }
+
+    /* ── Progress ────────────────────────────────────────── */
+    .progress-wrap { margin: 0.75rem 0; }
+    .progress-track {
+      background: var(--border);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: var(--accent);
+      height: 100%;
+      width: 0%;
+      transition: width 0.15s;
+    }
+    .progress-pct {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ── Log area ────────────────────────────────────────── */
+    .log-area {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.8rem;
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.76rem;
+      color: var(--muted);
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* ── Mode toggle ────────────────────────────────────── */
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1.1rem;
+      width: 100%;
+    }
+    .mode-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0.6rem 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .mode-btn:first-child { border-right: 1px solid var(--border); }
+    .mode-btn.active {
+      background: #1c2340;
+      color: var(--text);
+    }
+    .mode-btn .mode-sub {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    .mode-btn.active .mode-sub { color: var(--muted); }
+
+    /* ── Version picker ──────────────────────────────────── */
+    .version-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.1rem;
+    }
+    .version-row label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .version-row select {
+      flex: 1;
+      /* A flex item never shrinks below its longest option by default, and
+         release names are long: let it shrink and cut the text instead. */
+      min-width: 0;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.45rem 2.2rem 0.45rem 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath stroke='%238a8fa8' stroke-width='1.5' fill='none' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+    }
+    .version-row select:focus { outline: none; border-color: var(--accent); }
+    .version-row select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── V4 R8 choice (shown when an 8 MB PSRAM V4 is detected) ── */
+    .r8-row {
+      border: 1px solid var(--warn);
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.85rem;
+    }
+    .r8-row label { cursor: pointer; }
+    .r8-row p { color: var(--muted); margin-top: 0.4rem; font-size: 0.8rem; }
+
+    /* ── Flash section ──────────────────────────────────── */
+    .flash-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+    }
+    .flash-box p { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.1rem; }
+
+
+
+    /* ── Requirements ───────────────────────────────────── */
+    .req-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .req-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+    .req-list li .icon { flex-shrink: 0; }
+    .req-list li .ok  { color: var(--success); }
+    .req-list li .warn { color: var(--warn); }
+
+    /* ── Flash size note ────────────────────────────────── */
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.8rem 1.1rem;
+      font-size: 0.88rem;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      list-style: none;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "▶ "; font-size: 0.7em; }
+    details[open] summary::before { content: "▼ "; }
+    details p { margin-top: 0.7rem; color: var(--muted); line-height: 1.6; }
+    details code {
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.9em;
+    }
+
+    /* ── Button row ───────────────────────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.25rem;
+    }
+    .flash-btn.secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .flash-btn.secondary:hover:not(:disabled) {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Test build notice and the report list ──────────── */
+    .test-note {
+      border: 1px solid var(--warn);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      margin-bottom: 2.2rem;
+      font-size: 0.9rem;
+    }
+    .test-note p + p { margin-top: 0.6rem; }
+    .test-note a, .flash-box a { color: var(--accent); }
+    .report-list { padding-left: 1.2rem; font-size: 0.9rem; }
+    .report-list li + li { margin-top: 0.4rem; }
+    .files { font-size: 0.8rem; color: var(--muted); }
+    .files code { word-break: break-all; }
+    .wizard h2 { font-size: 1.35rem; line-height: 1.35; margin-bottom: 0.6rem; }
+    .wizard p { color: var(--muted); font-size: 0.92rem; margin-bottom: 0.9rem; }
+    .wizard .choices { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.4rem; }
+    .wizard .choices .flash-btn { flex: 1 1 12rem; }
+    .found-list { list-style: none; margin: 0.4rem 0 0.9rem; font-size: 0.92rem; }
+    .found-list li { padding: 0.2rem 0; }
+    .found-list li::before { content: '\2713  '; color: var(--success); font-weight: 700; }
+    .name-input {
+      width: 100%; padding: 0.7rem 0.9rem; font-size: 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg); color: var(--text); margin-bottom: 0.6rem;
+    }
+    .report-text {
+      white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.8rem;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.9rem; margin-bottom: 0.9rem; overflow-x: auto;
+    }
+    .sim-panel { border: 1px dashed var(--warn); border-radius: var(--radius); padding: 0.8rem; margin-bottom: 2rem; }
+    .sim-panel p { font-size: 0.8rem; color: var(--warn); margin-bottom: 0.5rem; }
+    .sim-panel button { margin: 0.2rem; padding: 0.3rem 0.6rem; }
+    @media (max-width: 480px) { .wizard h2 { font-size: 1.15rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>RT</span>Node Board Check</h1>
+    <p>Find out what's on your LoRa board, so RTNode can support it. It runs in your browser,
+      with nothing to install.</p>
+  </header>
+
+  <div class="test-note">
+    <p><strong>What this does:</strong> it puts a small check program on your board, finds the
+      radio, screen and buttons by itself, and asks you to press a few buttons. At the end you get
+      a short report to send us. Nothing is transmitted over the radio.</p>
+    <p>The check replaces the firmware on your board, but leaves its saved settings alone.
+      Afterwards, put RTNode on with a <strong>First install</strong> from the
+      <a href="../">RTNode flasher</a>, or Meshtastic with its
+      <a href="https://flasher.meshtastic.org/" target="_blank" rel="noopener">web flasher</a>.
+      For now the check runs on boards with an ESP32-S3 chip.</p>
+  </div>
+
+  <div id="sim-panel" class="sim-panel" style="display:none">
+    <p>Simulated board (this page was opened with ?sim): no real board is used.</p>
+    <div id="sim-buttons"></div>
+  </div>
+
+  <section class="step">
+    <div class="step-label" id="wizard-label">Board check</div>
+    <div class="flash-box wizard" id="wizard"></div>
+  </section>
+
+  <div id="detect-status" style="display:none; margin-bottom: 2.2rem"></div>
+
+  <section class="step">
+    <div class="step-label">Console</div>
+    <div id="progress-wrap" class="progress-wrap" style="display:none">
+      <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+      <div id="progress-pct" class="progress-pct">0%</div>
+    </div>
+    <div id="log-area" class="log-area" style="display:none"></div>
+  </section>
+
+  <section class="step">
+    <div class="step-label">Files</div>
+    <div class="flash-box files">
+      <p>The page checks each file against its SHA-256 before writing it. The check program's
+        source is in the <code>board-check</code> folder of
+        <a href="https://github.com/jrl290/RTNode-HeltecV4" target="_blank" rel="noopener">RTNode</a>,
+        GPL-3 like the rest of RTNode. Its list of boards is made from the board definitions of the
+        <a href="https://github.com/meshtastic/firmware" target="_blank" rel="noopener">Meshtastic firmware</a>
+        project (GPL-3), with thanks.</p>
+      <p id="file-list"></p>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-label">Requirements</div>
+    <ul class="req-list">
+      <li><span class="icon ok">&#10003;</span>
+        <span>Google Chrome 89+ or Microsoft Edge &mdash; Web Serial API required
+          (Firefox and Safari are not supported)</span></li>
+      <li><span class="icon ok">&#10003;</span><span>A USB cable that carries data, plugged into the board</span></li>
+      <li><span class="icon warn">&#9888;</span>
+        <span>On Linux, you may need to add your user to the <code>dialout</code>
+          group: <code>sudo usermod -a -G dialout $USER</code> (then log out and back in)</span></li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>
+    RTNode Firmware &mdash;
+    <a href="https://github.com/jrl290/RTNode-HeltecV4" target="_blank" rel="noopener">GitHub</a>
+    &middot; Powered by
+    <a href="https://github.com/espressif/esptool-js" target="_blank" rel="noopener">esptool-js</a>
+  </p>
+</footer>
+
+<script type="module">
+  // ── The check program and its files ────────────────────────────────────────
+  // Written part by part so the board's saved settings (between 0x9000 and
+  // 0xe000) are left alone.
+  const CHECK_VERSION = 'board-check 0.1';
+  const PARTS = [
+    { name: 'bootloader.bin',     address: 0x0,     sha256: '9bf9aab34441621d794360ca427cbddc3d62f38a7950f8790696bb3d7986769f' },
+    { name: 'partitions.bin',     address: 0x8000,  sha256: 'aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd' },
+    { name: 'boot_app0.bin',      address: 0xe000,  sha256: 'f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0' },
+    { name: 'board_check_esp32s3.bin', address: 0x10000, sha256: '0f1138f0c50e78c6c7b8c30548905d5053ec0e10a73dff2905eebbea599c08d6' },
+  ];
+  const ISSUES_URL = 'https://github.com/jrl290/RTNode-HeltecV4/issues/new';
+  const SIM = new URLSearchParams(location.search).has('sim');
+  const SIM_BOARD = new URLSearchParams(location.search).get('sim');   // '' or 'unknown'
+
+  // ── UI refs and helpers ────────────────────────────────────────────────────
+  const wizard       = document.getElementById('wizard');
+  const wizardLabel  = document.getElementById('wizard-label');
+  const detectStatus = document.getElementById('detect-status');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-fill');
+  const progressPct  = document.getElementById('progress-pct');
+  const logArea      = document.getElementById('log-area');
+
+  document.getElementById('file-list').innerHTML = PARTS.map(p =>
+    `<a href="firmware/${p.name}">${p.name}</a> (at 0x${p.address.toString(16)})<br><code>${p.sha256}</code>`
+  ).join('<br>');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+  function log(msg) {
+    logArea.style.display = 'block';
+    logArea.textContent += msg + '\n';
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+  function setBadge(kind, html) {
+    if (!kind) { detectStatus.style.display = 'none'; return; }
+    detectStatus.style.display = 'block';
+    detectStatus.innerHTML = `<div class="detect-badge ${kind}">${html}</div>`;
+  }
+  function setProgress(pct) {
+    progressWrap.style.display = pct === null ? 'none' : 'block';
+    if (pct === null) return;
+    progressFill.style.width = pct + '%';
+    progressPct.textContent = Math.round(pct) + '%';
+  }
+  async function sha256Hex(bytes) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // One instruction at a time. choices: [{label, primary, onClick}]
+  function show(label, title, text, choices = [], extra = '') {
+    wizardLabel.textContent = label;
+    wizard.innerHTML = `<h2>${title}</h2>${text ? `<p>${text}</p>` : ''}${extra}<div class="choices"></div>`;
+    const row = wizard.querySelector('.choices');
+    for (const c of choices) {
+      const b = document.createElement('button');
+      b.className = 'flash-btn' + (c.primary ? '' : ' secondary');
+      b.textContent = c.label;
+      b.addEventListener('click', c.onClick);
+      row.appendChild(b);
+    }
+  }
+
+  // ── What the check has learnt; the report is made from this ────────────────
+  const R = {
+    chip: null, features: [], flashMb: 0, psram: 'none', usb: '', vidpid: '',
+    found: null, wireless: null,
+    resetWorked: null, pressedBeforeReset: [],
+    buttons: new Map(),          // pin -> its level while pressed
+    touch: null,                 // {x, y, raw} of the first touch, or 'none' / 'nothing'
+    arrow: null,                 // {turns, mirrored} or 'blank'
+    background: null,            // 'black' | 'white'
+    userName: null,
+  };
+  let phase = 'start';
+  let orientation = { turns: 0, mirrored: false };
+
+  // ── The connection to the check program ────────────────────────────────────
+  // Real boards: Web Serial at 115200, one JSON object per line each way.
+  // ?sim: an in-page stand-in that speaks the same lines.
+  const link = {
+    port: null, reader: null, onLine: null, onGone: null, info: null,
+
+    async open(port) {
+      this.port = port;
+      await port.open({ baudRate: 115200 });
+      try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch (_) {}
+      this.readLoop();
+    },
+    async readLoop() {
+      const dec = new TextDecoder();
+      let buf = '';
+      try {
+        this.reader = this.port.readable.getReader();
+        for (;;) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let i;
+          while ((i = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, i).replace(/\r$/, '');
+            buf = buf.slice(i + 1);
+            if (this.onLine) this.onLine(line);
+          }
+        }
+      } catch (_) { /* the device went away */ }
+      try { this.reader.releaseLock(); } catch (_) {}
+      try { await this.port.close(); } catch (_) {}
+      this.reader = null;
+      if (this.onGone) this.onGone();
+    },
+    async send(obj) {
+      if (SIM) { sim.receive(obj); return; }
+      if (!this.port || !this.port.writable) return;
+      const w = this.port.writable.getWriter();
+      try { await w.write(new TextEncoder().encode(JSON.stringify(obj) + '\n')); } finally { w.releaseLock(); }
+    },
+    async close() {
+      if (this.reader) { try { await this.reader.cancel(); } catch (_) {} }
+    },
+  };
+
+  // After a reset, a board on its own USB port comes back as a new device:
+  // find it again by its USB IDs. Bounded: the page waits 15 s, then asks.
+  async function reopen() {
+    const want = link.info;
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const ports = await navigator.serial.getPorts();
+      const p = ports.find(p => {
+        const i = p.getInfo();
+        return want && i.usbVendorId === want.usbVendorId && i.usbProductId === want.usbProductId;
+      }) || (ports.length === 1 ? ports[0] : null);
+      if (p) {
+        try { await link.open(p); return true; } catch (_) { /* not ready yet */ }
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    return false;
+  }
+
+  // ── Lines from the board ───────────────────────────────────────────────────
+  function onLine(line) {
+    let ev = null;
+    if (line.startsWith('{')) { try { ev = JSON.parse(line); } catch (_) {} }
+    if (!ev) {
+      if (line.trim()) log(line);
+      if (/waiting for download/i.test(line)) onDownloadMode();
+      return;
+    }
+    if (ev.event !== 'dump') log(line.length > 400 ? line.slice(0, 400) + '…' : line);
+    switch (ev.event) {
+      case 'boot':        onBoot(ev); break;
+      case 'hello':       onHello(ev); break;
+      case 'found':       onFound(ev); break;
+      case 'wireless':    R.wireless = ev; break;
+      case 'button':      onButton(ev); break;
+      case 'touch':       onTouch(ev); break;
+      case 'orientation': orientation = { turns: ev.turns, mirrored: ev.mirrored }; renderArrowHint(); break;
+    }
+  }
+
+  function probeCmd() {
+    return { cmd: 'probe', psram: R.psram, flash_mb: R.flashMb, usb: R.usb };
+  }
+
+  // The board says hello after every start; it forgets everything when it
+  // restarts, so the page asks it to look again and puts the picture back.
+  let helloTimer = null;
+  function expectHello() {
+    clearTimeout(helloTimer);
+    link.send({ cmd: 'hello' });
+    helloTimer = setTimeout(() => {
+      if (phase === 'reconnecting') { phase = 'reset'; onDownloadMode(); }
+      else if (phase === 'connecting') lostBoard();
+    }, 8000);
+  }
+  function onBoot() {
+    if (resetDone()) expectHello();   // the port stayed open: a USB bridge chip
+  }
+  function onHello(ev) {
+    clearTimeout(helloTimer);
+    if (phase !== 'start' && phase !== 'done') link.send(probeCmd());
+  }
+  function onDownloadMode() {
+    if (phase !== 'reset' && phase !== 'reconnecting') return;
+    phase = 'reset';
+    show('Step 1 of 4', 'Press the reset button again, on its own.',
+      'The board didn\u2019t start the check program. That happens when another button is held while resetting.',
+      [{ label: 'My board has no reset button', onClick: () => { R.resetWorked = 'no button'; askButtons(); } }]);
+  }
+
+  // ── Step 0: write the check program ────────────────────────────────────────
+  function startScreen() {
+    phase = 'start';
+    show('Board check', 'Plug in your board and click Start.',
+      'Your browser will ask which port to use: pick your board. Writing the check program takes about a minute.',
+      [{ label: 'Start', primary: true, onClick: start }]);
+  }
+
+  function detectPsram(features) {
+    const up = features.map(f => String(f).toUpperCase());
+    if (up.some(f => f.includes('PSRAM 8MB'))) return '8MB';
+    if (up.some(f => f.includes('PSRAM 2MB'))) return '2MB';
+    if (up.some(f => f.includes('PSRAM'))) return '';
+    return 'none';
+  }
+
+  async function start() {
+    if (SIM) return simStart();
+    if (!('serial' in navigator)) {
+      setBadge('err', '&#10007; Web Serial not supported &mdash; use Chrome or Edge');
+      return;
+    }
+    setBadge(null);
+    let port;
+    try { port = await navigator.serial.requestPort(); } catch (_) { return; }
+    link.info = port.getInfo();
+    const vid = link.info.usbVendorId, pid = link.info.usbProductId;
+    R.vidpid = vid !== undefined ? `${vid.toString(16).padStart(4, '0')}:${(pid || 0).toString(16).padStart(4, '0')}` : '';
+    R.usb = vid === 0x303A ? 'native' : vid !== undefined ? 'bridge' : '';
+    show('Board check', 'Writing the check program…', 'Keep the board plugged in.');
+
+    const { ESPLoader, Transport } = await import('https://unpkg.com/esptool-js@0.4.6/bundle.js');
+    const transport = new Transport(port, false);
+    try {
+      const terminal = { clean() {}, writeLine(d) { log(d); }, write(d) { if (d.trim()) log(d.trim()); } };
+      const loader = new ESPLoader({ transport, baudrate: 921600, terminal });
+      await loader.main('default_reset');
+      R.chip = loader.chip.CHIP_NAME;
+      R.features = await loader.chip.getChipFeatures(loader);
+      const kb = await loader.getFlashSize();
+      R.flashMb = kb >= 1024 ? kb / 1024 : 0;
+      R.psram = detectPsram(R.features);
+      log(`Chip: ${R.chip}; features: ${R.features.join(', ')}; flash: ${R.flashMb} MB`);
+      if (!R.chip.includes('ESP32-S3')) {
+        await transport.disconnect();
+        show('Board check', `This board has an ${esc(R.chip)} chip.`,
+          'The check runs on ESP32-S3 boards for now; other chips come later. Nothing was written to the board.',
+          [{ label: 'Start again', primary: false, onClick: startScreen }]);
+        return;
+      }
+      const fileArray = [];
+      for (const part of PARTS) {
+        const resp = await fetch(`firmware/${part.name}`, { cache: 'no-cache' });
+        if (!resp.ok) throw new Error(`Couldn't download ${part.name}: ${resp.status}`);
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        if (await sha256Hex(bytes) !== part.sha256)
+          throw new Error(`${part.name} did not download intact. Reload the page and try again.`);
+        fileArray.push({ data: Array.from(bytes, b => String.fromCharCode(b)).join(''), address: part.address });
+      }
+      setProgress(0);
+      await loader.writeFlash({
+        fileArray, flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep', eraseAll: false, compress: true,
+        reportProgress(idx, written, total) { setProgress(((idx + written / total) / fileArray.length) * 100); },
+      });
+      setProgress(100);
+      await loader.hardReset();
+      await transport.disconnect();
+    } catch (err) {
+      try { await transport.disconnect(); } catch (_) {}
+      const msg = err instanceof Error ? err.message : String(err);
+      log('Error: ' + msg);
+      setProgress(null);
+      show('Board check', 'Writing the check program didn’t work.', esc(msg),
+        [{ label: 'Try again', primary: true, onClick: startScreen }]);
+      return;
+    }
+    setProgress(null);
+    phase = 'connecting';
+    show('Board check', 'Looking at your board…', 'This takes a few seconds.');
+    link.onLine = onLine;
+    link.onGone = onGone;
+    await new Promise(r => setTimeout(r, 1500));
+    if (!(await reopen())) return lostBoard();
+    expectHello();
+  }
+
+  function lostBoard() {
+    show('Board check', 'The board isn’t answering.',
+      'Check it’s still plugged in, then click Reconnect and pick its port again.',
+      [{ label: 'Reconnect', primary: true, onClick: manualReconnect }]);
+  }
+  async function manualReconnect() {
+    try {
+      const port = await navigator.serial.requestPort();
+      link.info = port.getInfo();
+      await link.open(port);
+      if (phase === 'reset') phase = 'reconnecting';
+      expectHello();
+    } catch (_) {}
+  }
+
+  async function onGone() {
+    if (SIM || phase === 'done') return;
+    resetDone();                      // a board on its own USB port drops off when reset
+    if (!(await reopen())) lostBoard();
+    else expectHello();
+  }
+
+  // ── What was found ─────────────────────────────────────────────────────────
+  function boardLine(f) {
+    if (f.match === 'one') return `This looks like a <strong>${esc(f.board.name)}</strong>.`;
+    if (f.match === 'several')
+      return `This is one of: ${f.candidates.map(c => '<strong>' + esc(c.name) + '</strong>').join(', ')}.`;
+    if (f.radio) return `We found ${esc(radioName(f.radio))} radio, but couldn’t tell exactly which board this is.`;
+    return 'We couldn’t find a radio on any of the boards we know.';
+  }
+  function radioName(r) {
+    const m = /^(SX12\d\d|LLCC68|LR11\d\d)/.exec(r.chip || '');
+    return m ? 'an ' + m[1] : 'a ' + r.type.toUpperCase();
+  }
+
+  function onFound(f) {
+      R.found = f;
+    if (phase === 'connecting') {
+      link.send({ cmd: 'wireless' });
+      phase = 'found';
+      const title = f.match === 'one' ? 'Found it.' : f.match === 'several' ? 'It\u2019s one of a few boards.'
+                  : 'We couldn\u2019t name this board.';
+      const more = f.match === 'one' ? '' : ' We\u2019ll ask for its name at the end.';
+      show('Board check', title, boardLine(f) + more, [{ label: 'Next', primary: true, onClick: askReset }]);
+    } else if (phase === 'reconnecting') {
+      afterReset();
+    } else if (phase === 'x' || phase === 'arrow') {
+      link.send({ cmd: 'show', what: phase });   // it restarted mid-step
+    }
+  }
+
+  // ── Step 1: the reset button ───────────────────────────────────────────────
+  function askReset() {
+    phase = 'reset';
+    R.pressedBeforeReset = [];
+    show('Step 1 of 4', 'Press the reset button.',
+      'It’s often marked RST or RESET. Pressed the wrong one? That’s fine, keep going: we note every button.',
+      [{ label: 'My board has no reset button', onClick: () => { R.resetWorked = 'no button'; askButtons(); } }]);
+  }
+
+  function resetDone() {
+    if (phase !== 'reset') return false;
+    R.resetWorked = 'yes';
+    phase = 'reconnecting';
+    show('Step 1 of 4', 'Got it.', 'Waiting for the board to start again…');
+    return true;
+  }
+
+  function afterReset() {
+    phase = 'buttons-wait';
+    askButtons();
+  }
+
+  // ── Step 2: the other buttons ──────────────────────────────────────────────
+  function onButton(ev) {
+    if (!ev.down) return;
+    if (phase === 'reset') {
+      if (!R.pressedBeforeReset.includes(ev.pin)) R.pressedBeforeReset.push(ev.pin);
+      if (!R.buttons.has(ev.pin)) R.buttons.set(ev.pin, ev.level);
+      return;
+    }
+    if (!R.buttons.has(ev.pin)) R.buttons.set(ev.pin, ev.level);
+    if (phase === 'buttons') renderButtons();
+  }
+
+  function askButtons() {
+    phase = 'buttons';
+    renderButtons();
+  }
+
+  function renderButtons() {
+    const items = [...R.buttons.keys()].map((p, i) => `<li>Button ${i + 1} found</li>`).join('');
+    show('Step 2 of 4', 'Now press each of the other buttons, one at a time.',
+      'Click Done when you’ve pressed them all. A button that does nothing here may still be useful to us.',
+      [{ label: 'Done', primary: true, onClick: afterButtons },
+       { label: 'There are no other buttons', onClick: afterButtons }],
+      items ? `<ul class="found-list">${items}</ul>` : '');
+  }
+
+  function afterButtons() {
+    const f = R.found || {};
+    const touchy = f.touch || (f.screen && f.screen.colour);
+    if (f.screen && f.screen.drawn && touchy) return askX();
+    if (f.screen && f.screen.drawn) return askArrow();
+    finish();
+  }
+
+  // ── Step 3: the X ──────────────────────────────────────────────────────────
+  function askX() {
+    phase = 'x';
+    link.send({ cmd: 'show', what: 'x' });
+    show('Step 3 of 4', 'Press the X on the screen.', '',
+      [{ label: 'There’s no X on my screen', onClick: () => { R.touch = 'no X'; askArrow(); } },
+       { label: 'Pressing it does nothing', onClick: () => { R.touch = 'nothing'; askArrow(); } }]);
+  }
+
+  function onTouch(ev) {
+    if (!ev.down) return;
+    if (phase === 'x') {
+      R.touch = { x: ev.x, y: ev.y, raw: ev.raw };
+      show('Step 3 of 4', 'Got it.', '');
+      setTimeout(askArrow, 700);
+    }
+  }
+
+  // ── Step 4: the arrow, then the colours ────────────────────────────────────
+  function askArrow() {
+    phase = 'arrow';
+    link.send({ cmd: 'show', what: 'arrow' });
+    renderArrowHint();
+  }
+
+  function renderArrowHint() {
+    if (phase !== 'arrow') return;
+    show('Step 4 of 4', 'Press the screen or any button until the arrow points up and you can read UP.',
+      'Each press turns it a quarter turn. After four turns it shows the same, mirrored.',
+      [{ label: 'It points up', primary: true, onClick: () => { R.arrow = { ...orientation }; afterArrow(); } },
+       { label: 'Turn it from here', onClick: () => link.send({ cmd: 'rotate' }) },
+       { label: 'The screen is blank', onClick: () => { R.arrow = 'blank'; afterArrow(); } }]);
+  }
+
+  function afterArrow() {
+    const f = R.found || {};
+    if (R.arrow !== 'blank' && f.screen && f.screen.colour) return askColours();
+    afterScreen();
+  }
+
+  function askColours() {
+    phase = 'colours';
+    show('Step 4 of 4', 'Is the background black or white?', '',
+      [{ label: 'Black', primary: true, onClick: () => { R.background = 'black'; afterScreen(); } },
+       { label: 'White', primary: true, onClick: () => { R.background = 'white'; afterScreen(); } }]);
+  }
+
+  function afterScreen() {
+    link.send({ cmd: 'show', what: 'status' });
+    finish();
+  }
+
+  // ── The board's name, when it couldn't be told ─────────────────────────────
+  async function finish() {
+    const f = R.found || {};
+    if (f.match === 'one') return showReport();
+    phase = 'name';
+    let names = [];
+    try {
+      const lib = await (await fetch('boards.json', { cache: 'no-cache' })).json();
+      names = [...new Set(lib.boards.map(b => b.name))].sort();
+    } catch (_) {}
+    show('Last step', 'What’s the name printed on the board?',
+      'Pick it from the list if it’s there, or type what you see.',
+      [{ label: 'Continue', primary: true, onClick: () => {
+          R.userName = document.getElementById('board-name').value.trim() || null; showReport(); } },
+       { label: 'I can’t find a name', onClick: () => { R.userName = null; showReport(); } }],
+      `<input id="board-name" class="name-input" list="board-names" autocomplete="off">
+       <datalist id="board-names">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>`);
+  }
+
+  // ── The report ─────────────────────────────────────────────────────────────
+  function pinList(o) {
+    return Object.entries(o).filter(([, v]) => v >= 0).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ');
+  }
+
+  function reportText() {
+    const f = R.found || {};
+    const L = [];
+    L.push(`RTNode board check report (${CHECK_VERSION})`);
+    if (f.match === 'one') L.push(`Board: ${f.board.name} (${f.board.id}), found by the check`);
+    else if (f.match === 'several') L.push(`Board: one of ${f.candidates.map(c => c.id).join(', ')}`);
+    else L.push('Board: not found in the board list');
+    if (R.userName) L.push(`Name on the board: ${R.userName}`);
+    L.push(`Chip: ${R.chip || '?'}, flash ${R.flashMb || '?'} MB, PSRAM ${R.psram || 'unknown'}, USB ${R.usb || '?'} (${R.vidpid || '?'})`);
+    if (f.radio) {
+      const r = f.radio;
+      L.push(`Radio: ${r.type}, "${r.chip}", ${pinList(r.pins)}` +
+        (r.tcxo_v ? `, TCXO ${r.tcxo_v} V` : '') + (r.rf_switch_dio2 ? ', DIO2 antenna switch' : ''));
+      L.push(`  ID read: ok; oscillator: ${r.oscillator}; IRQ line: ${r.irq}${r.irq_ms !== undefined ? ` (${r.irq_ms} ms)` : ''}; errors ${r.errors}`);
+    } else {
+      L.push(`Radio: not found (${f.radio_tries || 0} pin sets tried)`);
+    }
+    if (f.power) {
+      const pins = (f.power.pins || []).map(p => `GPIO${p.pin} on ${p.on ? 'high' : 'low'}`).join(', ');
+      L.push(`Power: ${pins || 'no switch pins'}; power chip: ${f.power.chip}`);
+    }
+    for (const b of f.i2c || [])
+      if (b.devices.length) L.push(`I2C SDA ${b.sda} / SCL ${b.scl}: ${b.devices.join(' ')}`);
+    if (f.screen) {
+      const s = f.screen;
+      let line = `Screen: ${s.type}`;
+      if (s.drawn) line += ` ${s.w}x${s.h}${s.addr ? ' at ' + s.addr : ''}`;
+      else if (s.type !== 'none') line += ', not drawn on by the check';
+      if (R.arrow === 'blank') line += '; stayed blank';
+      else if (R.arrow) line += `; arrow up at ${R.arrow.turns} quarter turn(s)${R.arrow.mirrored ? ', mirrored' : ''}`;
+      if (R.background) line += `; background ${R.background}`;
+      L.push(line);
+    }
+    if (R.touch && typeof R.touch === 'object')
+      L.push(`Touch: works${f.touch && f.touch.chip ? ' (' + f.touch.chip + (f.touch.addr ? ' at ' + f.touch.addr : '') + ')' : ''}; X pressed at ${R.touch.x},${R.touch.y} raw ${R.touch.raw}`);
+    else if (R.touch === 'nothing') L.push('Touch: pressing the X did nothing');
+    else if (R.touch === 'no X') L.push('Touch: no X shown');
+    else if (f.touch) L.push(`Touch: ${f.touch.chip}, not tried`);
+    L.push(`Reset button: ${R.resetWorked === 'yes' ? 'works' : R.resetWorked || 'not tried'}` +
+      (R.pressedBeforeReset.length ? `; pressed before it: ${R.pressedBeforeReset.map(p => 'GPIO' + p).join(', ')}` : ''));
+    const btns = [...R.buttons.entries()].map(([p, lvl]) => `GPIO${p} (${lvl ? 'active high' : 'active low'})`);
+    L.push(`Buttons: ${btns.length ? btns.join(', ') : 'none pressed'}`);
+    if (f.buttons_expected) L.push(`Buttons in the board list: ${f.buttons_expected.map(p => 'GPIO' + p).join(', ') || 'none'}`);
+    if (R.wireless)
+      L.push(`WiFi: ${R.wireless.wifi_networks} networks seen` +
+        (R.wireless.wifi_best_rssi !== undefined ? `, strongest ${R.wireless.wifi_best_rssi} dBm` : '') +
+        `; Bluetooth: ${R.wireless.ble_devices} devices seen`);
+    if (f.battery_mv !== undefined) L.push(`Battery pin: ${(f.battery_mv / 1000).toFixed(2)} V`);
+    return L.join('\n');
+  }
+
+  function showReport() {
+    phase = 'done';
+    const text = reportText();
+    const title = 'Board check: ' + (R.userName || (R.found && R.found.board ? R.found.board.name : 'unknown board'));
+    const issue = `${ISSUES_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent('```\n' + text + '\n```\n')}`;
+    show('Report', 'All done. Here’s your report.',
+      'It has no names, addresses or anything personal: only what the check found and what you pressed.',
+      [{ label: 'Copy', primary: true, onClick: async () => {
+          try { await navigator.clipboard.writeText(text); setBadge('ok', '&#10003; Copied.'); }
+          catch (_) { setBadge('err', '&#10007; Couldn’t copy: select the text and copy it instead.'); } } },
+       { label: 'Send it to us', primary: true, onClick: () => window.open(issue, '_blank', 'noopener') }],
+      `<div class="report-text" id="report-text">${esc(text)}</div>
+       <p>"Send it to us" opens a GitHub issue with the report filled in (you need a GitHub account,
+         and you see it before it’s sent). Or copy it and send it where you asked about your board.</p>
+       <p>To put RTNode on the board, use a <strong>First install</strong> from the <a href="../">RTNode flasher</a>.</p>`);
+    link.close();
+  }
+
+  // ── The simulated board (?sim) ─────────────────────────────────────────────
+  // Speaks the check program's lines, so every step of the page can be tried
+  // without a board. Its pretend board is a Heltec V4 in the Expansion Kit.
+  const sim = {
+    probed: false, orientation: 0, mode: 'status',
+    emit(obj) { setTimeout(() => onLine(JSON.stringify(obj)), 30); },
+    receive(c) {
+      log('> ' + JSON.stringify(c));
+      if (c.cmd === 'hello') this.emit({ event: 'hello', fw: CHECK_VERSION, reset: 1, probed: false, boards: 97 });
+      if (c.cmd === 'probe' && SIM_BOARD === 'unknown') {
+        setTimeout(() => this.emit({
+          event: 'found', match: 'none', candidates: [], radio_tries: 41,
+          radio: { type: 'sx127x', chip: 'SX1276/7/8/9', pins: { sck: 5, miso: 3, mosi: 6, cs: 7, rst: 8, irq: 33, busy: -1 },
+                   rf_switch_dio2: false, busy_ms: -1, errors: '0x0000', oscillator: 'ok', irq: 'ok', irq_ms: 3 },
+          power: { chip: 'none', pins: [] }, i2c: [], screen: { type: 'none', drawn: false } }), 1200);
+      } else if (c.cmd === 'probe') {
+        this.emit({ event: 'step', step: 'radio' });
+        setTimeout(() => this.emit({
+          event: 'found', match: 'one', board: { id: 'heltec-v4-tft', name: 'Heltec V4 TFT' },
+          candidates: [{ id: 'heltec-v4-tft', name: 'Heltec V4 TFT' }], radio_tries: 1,
+          radio: { type: 'sx126x', chip: 'SX1261 V2D 2D02', pins: { sck: 9, miso: 11, mosi: 10, cs: 8, rst: 12, irq: 14, busy: 13 },
+                   tcxo_v: 1.8, rf_switch_dio2: true, busy_ms: 2, errors: '0x0000', oscillator: 'ok', irq: 'ok', irq_ms: 15 },
+          power: { chip: 'none', pins: [{ pin: 36, on: 0 }, { pin: 7, on: 1 }] },
+          i2c: [{ sda: 47, scl: 48, devices: ['0x2e'] }],
+          screen: { type: 'st7789', drawn: true, w: 240, h: 320, colour: true },
+          touch: { chip: 'CHSC6x', addr: '0x2e', int: -1 }, buttons_expected: [0, 35], led: -1, battery_mv: 4100 }), 1200);
+      }
+      if (c.cmd === 'wireless') setTimeout(() => this.emit({ event: 'wireless', wifi_networks: 5, wifi_best_rssi: -61, ble_devices: 12 }), 1500);
+      if (c.cmd === 'show') {
+        this.mode = c.what;
+        if (c.what === 'arrow') { this.orientation = 0; this.emitOrientation(); }
+      }
+      if (c.cmd === 'rotate') this.turn();
+    },
+    emitOrientation() { this.emit({ event: 'orientation', turns: this.orientation & 3, mirrored: this.orientation >= 4 }); },
+    turn() { this.orientation = (this.orientation + 1) % 8; this.emitOrientation(); },
+    press(pin) {
+      this.emit({ event: 'button', pin, down: true, level: 0 });
+      this.emit({ event: 'button', pin, down: false, level: 1 });
+      if (this.mode === 'arrow') this.turn();
+    },
+    touch() {
+      this.emit({ event: 'touch', down: true, x: 31, y: 40, raw: '0100' + '1f00280000000000'.slice(0, 12) });
+      this.emit({ event: 'touch', down: false, raw: '0000000000000000' });
+      if (this.mode === 'arrow') this.turn();
+    },
+    reset() { this.mode = 'status'; this.emit({ event: 'boot', fw: CHECK_VERSION, reset: 1 }); },
+  };
+
+  function simStart() {
+    phase = 'connecting';
+    R.chip = 'ESP32-S3'; R.features = ['WiFi', 'BLE', 'Embedded PSRAM 2MB (AP_3v3)']; R.flashMb = 16;
+    R.psram = '2MB'; R.usb = 'native'; R.vidpid = '303a:1001';
+    show('Board check', 'Looking at your board…', 'This takes a few seconds.');
+    link.send({ cmd: 'hello' });
+  }
+
+  if (SIM) {
+    document.getElementById('sim-panel').style.display = 'block';
+    const box = document.getElementById('sim-buttons');
+    const add = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; box.appendChild(b); };
+    add('Press reset', () => sim.reset());
+    add('Press GPIO0 (BOOT)', () => sim.press(0));
+    add('Press GPIO35', () => sim.press(35));
+    add('Touch the screen', () => sim.touch());
+    link.onLine = onLine;
+  }
+
+  startScreen();
+</script>
+</body>
+</html>

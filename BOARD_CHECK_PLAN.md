@@ -3,8 +3,47 @@
 Read with [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md) and the workspace
 `DESIGN_PRINCIPLES.md`.
 
-Written 2026-11-03, from James's questions that day. This is a plan only:
-nothing is built yet.
+Written 2026-11-03, from James's questions that day. James said "build it"
+the same day, ESP32-S3 first, with both ways of sending a report.
+
+## Where it stands (2026-11-03)
+
+The ESP32-S3 check image (`board-check/`) and the page (`docs/board-check/`)
+are built. How they work is in `board-check/README.md`. Changes from this
+plan:
+
+- **Radio probe: written from the datasheets, not RadioLib.** RadioLib's
+  start-up retries each chip up to ten times. The design principles allow
+  one try with a fixed wait, so the probe reads the IDs itself. The command
+  and register numbers were checked against RadioLib's.
+- **The page writes the image in four parts, not as one merged file.** That
+  leaves the board's saved settings (0x9000 to 0xe000) alone. Putting RTNode
+  back needs a First install.
+- **AXP2101 power chips:** only the outputs each board's own firmware switches
+  on, for three boards from Meshtastic's `Power.cpp`. The T-Watch Ultra runs a
+  1.8 V sensor on one output, so switching every output on at 3.3 V could harm
+  it.
+
+Tested:
+
+- On the V4.2 and the staging R8, over SSH, both were named correctly with no
+  input: Heltec V4 and Heltec V4 R8, the only match each time, in about 5 s.
+  Each radio's ID read back, the oscillator ran, and the IRQ line rose in
+  15 ms. The OLED was found and drawn on. The X and all eight arrow pictures
+  were read back from the OLED and look right.
+- Both boards went back to the v1.0.54 release images with their settings
+  kept.
+- The page was clicked through in the browser against its simulated board
+  (`?sim`, and `?sim=unknown` for a board it can't name), including at phone
+  width.
+
+Not done yet:
+
+- No run in a real browser with a real board: no board is attached to the
+  M1.
+- No run by a person pressing buttons.
+- The touch chips' coordinates haven't been read from a real chip.
+- The LR11xx IRQ check, e-paper screens, and the classic ESP32 build.
 
 ## Why
 
