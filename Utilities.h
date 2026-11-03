@@ -394,8 +394,9 @@ extern RNS::Reticulum reticulum;
 #endif
 
 // ── Headless LED indicators (for Heltec V4 without OLED) ─────────────────
-// Uses LEDC PWM for smooth ramp effects on pin_led_tx (GPIO 35)
-#if BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3
+// Uses LEDC PWM for smooth ramp effects on pin_led_tx (GPIO 35). Not in the
+// Expansion Kit build, where GPIO35 is a button.
+#if (BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_HELTEC32_V3) && !defined(HELTEC_V4_TFT)
   #define HEADLESS_LED_CHANNEL 0
   bool headless_led_pwm_attached = false;
 

@@ -28,6 +28,9 @@
     #define COLOR565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
   #elif BOARD_MODEL == BOARD_TBEAM_S_V1
     #include <Adafruit_SH110X.h>
+  #elif defined(HELTEC_V4_TFT)
+    #include <SPI.h>
+    #include <Adafruit_ST7789.h>
   #else
     #include <Wire.h>
     #include <Adafruit_SSD1306.h>
@@ -123,6 +126,13 @@
   Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, -1);
   #define SSD1306_WHITE SH110X_WHITE
   #define SSD1306_BLACK SH110X_BLACK
+#elif defined(HELTEC_V4_TFT)
+  // The Expansion Kit's screen, on the second SPI bus (the radio has the first).
+  SPIClass tft_spi(HSPI);
+  Adafruit_ST7789 display = Adafruit_ST7789(&tft_spi, pin_tft_cs, pin_tft_dc, pin_tft_rst);
+  #define SSD1306_WHITE ST77XX_WHITE
+  #define SSD1306_BLACK ST77XX_BLACK
+  bool tft_cleared = false;  // the whole screen is black, nothing drawn since
 #elif BOARD_MODEL == BOARD_TECHO
   GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(pin_disp_cs, pin_disp_dc, pin_disp_reset, pin_disp_busy));
   uint32_t last_epd_refresh = 0;
@@ -216,6 +226,21 @@ void update_area_positions() {
       p_as_x = 64;
       p_as_y = 0;
     }
+  #elif defined(HELTEC_V4_TFT)
+    // The two panels at DISPLAY_SCALE, centred: stacked in portrait (as the
+    // V4's OLED shows them), side by side in landscape.
+    const int side = 64 * DISPLAY_SCALE;
+    if (disp_mode == DISP_MODE_PORTRAIT) {
+      p_ad_x = (display.width() - side) / 2;
+      p_ad_y = (display.height() - 2 * side) / 2;
+      p_as_x = p_ad_x;
+      p_as_y = p_ad_y + side;
+    } else if (disp_mode == DISP_MODE_LANDSCAPE) {
+      p_ad_x = (display.width() - 2 * side) / 2;
+      p_ad_y = (display.height() - side) / 2;
+      p_as_x = p_ad_x + side;
+      p_as_y = p_ad_y;
+    }
   #else
     if (disp_mode == DISP_MODE_PORTRAIT) {
       p_ad_x = 0 * DISPLAY_SCALE;
@@ -267,6 +292,11 @@ uint8_t display_contrast = 0x00;
     }
     level = value;
   }
+#elif defined(HELTEC_V4_TFT)
+  // The screen has no contrast: 0 turns the backlight off, anything else on.
+  void set_contrast(Adafruit_ST7789 *display, uint8_t value) {
+    digitalWrite(pin_tft_bl, value == 0 ? LOW : HIGH);
+  }
 #else
   void set_contrast(Adafruit_SSD1306 *display, uint8_t contrast) {
     display->ssd1306_command(SSD1306_SETCONTRAST);
@@ -297,6 +327,14 @@ bool display_init() {
       digitalWrite(pin_display_en, HIGH);
       delay(50);
       Wire.begin(SDA_OLED, SCL_OLED);
+    #elif BOARD_MODEL == BOARD_HELTEC32_V4 && defined(HELTEC_V4_TFT)
+      // enable vext / pin 36; backlight off until the screen is cleared
+      pinMode(Vext, OUTPUT);
+      digitalWrite(Vext, LOW);
+      delay(50);
+      pinMode(pin_tft_bl, OUTPUT);
+      digitalWrite(pin_tft_bl, LOW);
+      tft_spi.begin(pin_tft_sck, -1, pin_tft_mosi, -1);
     #elif BOARD_MODEL == BOARD_HELTEC32_V4
       // enable vext / pin 36
       pinMode(Vext, OUTPUT);
@@ -386,6 +424,11 @@ bool display_init() {
     if (false) {
     #elif BOARD_MODEL == BOARD_TBEAM_S_V1
     if (!display.begin(display_address, true)) {
+    #elif defined(HELTEC_V4_TFT)
+    // Write only, so there is no way to ask whether the screen is there.
+    display.init(240, 320);
+    display.setSPISpeed(40000000);
+    if (false) {
     #else
     if (!display.begin(SSD1306_SWITCHCAPVCC, display_address)) {
     #endif
@@ -427,6 +470,8 @@ bool display_init() {
         #elif BOARD_MODEL == BOARD_HELTEC32_V3
           disp_mode = DISP_MODE_PORTRAIT;
           display.setRotation(1);
+        #elif BOARD_MODEL == BOARD_HELTEC32_V4 && defined(HELTEC_V4_TFT)
+          display.setRotation(0);
         #elif BOARD_MODEL == BOARD_HELTEC32_V4
           disp_mode = DISP_MODE_PORTRAIT;
           display.setRotation(1);
@@ -447,6 +492,11 @@ bool display_init() {
           display.setRotation(3);
         #endif
       }
+
+      #if defined(HELTEC_V4_TFT)
+        // The OLED is landscape at rotation 0, this screen portrait.
+        disp_mode = display.width() > display.height() ? DISP_MODE_LANDSCAPE : DISP_MODE_PORTRAIT;
+      #endif
 
       update_area_positions();
 
@@ -477,6 +527,13 @@ bool display_init() {
 
       #if BOARD_MODEL == BOARD_TDECK
         display.fillScreen(SSD1306_BLACK);
+      #endif
+
+      #if defined(HELTEC_V4_TFT)
+        // Clear what the screen held at power-up; the first update turns the
+        // backlight on.
+        display.fillScreen(SSD1306_BLACK);
+        tft_cleared = true;
       #endif
 
       #if BOARD_MODEL == BOARD_HELTEC_T114
@@ -526,6 +583,29 @@ void fillRect(int16_t x, int16_t y, int16_t width, int16_t height, uint16_t colo
 void drawBitmap(int16_t startX, int16_t startY, const uint8_t* bitmap, int16_t bitmapWidth, int16_t bitmapHeight, uint16_t foregroundColour, uint16_t backgroundColour) {
   #if DISPLAY_SCALE == 1
     display.drawBitmap(startX, startY, bitmap, bitmapWidth, bitmapHeight, foregroundColour, backgroundColour);
+  #elif defined(HELTEC_V4_TFT)
+    // A rectangle per pixel costs an address window each over SPI, tens of
+    // ms per panel. Instead: one window, and each bitmap row sent as its
+    // DISPLAY_SCALE screen rows in one write.
+    tft_cleared = false;
+    if (bitmapWidth > 64) return;
+    uint16_t pixels[64 * DISPLAY_SCALE * DISPLAY_SCALE];
+    const int16_t width = bitmapWidth * DISPLAY_SCALE;
+    display.startWrite();
+    display.setAddrWindow(startX, startY, width, bitmapHeight * DISPLAY_SCALE);
+    for (int16_t row = 0; row < bitmapHeight; row++) {
+      const uint8_t *bits = bitmap + row * ((bitmapWidth + 7) / 8);
+      for (int16_t col = 0; col < bitmapWidth; col++) {
+        uint16_t colour = (bits[col / 8] & (0x80 >> (col % 8))) ? foregroundColour : backgroundColour;
+        for (int16_t dy = 0; dy < DISPLAY_SCALE; dy++) {
+          for (int16_t dx = 0; dx < DISPLAY_SCALE; dx++) {
+            pixels[dy * width + col * DISPLAY_SCALE + dx] = colour;
+          }
+        }
+      }
+      display.writePixels(pixels, width * DISPLAY_SCALE);
+    }
+    display.endWrite();
   #else
     for(int16_t row = 0; row < bitmapHeight; row++){
         for(int16_t col = 0; col < bitmapWidth; col++){
@@ -1179,7 +1259,11 @@ void update_disp_area() {
   drawBitmap(p_ad_x, p_ad_y, disp_area.getBuffer(), disp_area.width(), disp_area.height(), SSD1306_WHITE, SSD1306_BLACK);
   if (disp_mode == DISP_MODE_LANDSCAPE) {
     if (device_init_done && !firmware_update_mode && !disp_ext_fb) {
-      drawLine(0, 0, 0, 63, SSD1306_WHITE);
+      #if defined(HELTEC_V4_TFT)
+        fillRect(p_ad_x, p_ad_y, DISPLAY_SCALE, 64 * DISPLAY_SCALE, SSD1306_WHITE);
+      #else
+        drawLine(0, 0, 0, 63, SSD1306_WHITE);
+      #endif
     }
   }
 }
@@ -1261,6 +1345,12 @@ void update_display(bool blank = false) {
       #if BOARD_MODEL == BOARD_HELTEC_T114
         display.clear();
         display.display();
+      #elif defined(HELTEC_V4_TFT)
+        // Once per blanking: a full screen is ~150 KB over SPI.
+        if (!tft_cleared) {
+          display.fillScreen(SSD1306_BLACK);
+          tft_cleared = true;
+        }
       #elif BOARD_MODEL != BOARD_TDECK && BOARD_MODEL != BOARD_TECHO
         display.clearDisplay();
         display.display();
@@ -1281,6 +1371,8 @@ void update_display(bool blank = false) {
 
       #if BOARD_MODEL == BOARD_HELTEC_T114
         display.clear();
+      #elif defined(HELTEC_V4_TFT)
+        // Nothing to clear: the panels are redrawn whole, the rest stays black.
       #elif BOARD_MODEL != BOARD_TDECK && BOARD_MODEL != BOARD_TECHO
         display.clearDisplay();
       #endif
@@ -1306,7 +1398,7 @@ void update_display(bool blank = false) {
           last_epd_refresh = millis();
           epd_blanked = false;
         }
-      #elif BOARD_MODEL != BOARD_TDECK
+      #elif BOARD_MODEL != BOARD_TDECK && !defined(HELTEC_V4_TFT)
         display.display();
       #endif
 

@@ -439,6 +439,11 @@
       #elif defined(HELTEC_V4_R8)
         #define pin_led_rx (heltec_v4_r8() ? 46 : 35)
         #define pin_led_tx (heltec_v4_r8() ? 46 : 35)
+      #elif defined(HELTEC_V4_TFT)
+        // In the Expansion Kit GPIO35, the V4's LED, is the kit's second
+        // button, so this build has no LED and never drives the pin.
+        const int pin_led_rx = -1;
+        const int pin_led_tx = -1;
       #else
         const int pin_led_rx = 35;
         const int pin_led_tx = 35;
@@ -485,6 +490,20 @@
       const int pin_mosi = 10;
       const int pin_miso = 11;
       const int pin_sclk = 9;
+
+      #if defined(HELTEC_V4_TFT)
+        // Expansion Kit touch screen (build rtnode_heltec_v4_tft): a 240x320
+        // ST7789 on the second SPI bus, write only. It uses the OLED's pins
+        // 17, 18 and 21, so this build has no OLED. Touch (I2C on 47/48,
+        // reset 44) is not used.
+        const int pin_tft_sck  = 17;
+        const int pin_tft_mosi = 33;
+        const int pin_tft_cs   = 15;
+        const int pin_tft_dc   = 16;
+        const int pin_tft_rst  = 18;
+        const int pin_tft_bl   = 21;
+        #define DISPLAY_SCALE 2
+      #endif
 
     #elif BOARD_MODEL == BOARD_RNODE_NG_20
       #define HAS_DISPLAY true

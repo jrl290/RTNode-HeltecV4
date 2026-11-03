@@ -93,7 +93,12 @@
           #if HAS_DISPLAY
           if (disp_ready) {
             display.fillScreen(SSD1306_WHITE);
+            #if defined(HELTEC_V4_TFT)
+            tft_cleared = false;
+            set_contrast(&display, 0xFF);
+            #else
             display.display();
+            #endif
           }
           #endif
           headless_led_fast_blink();

@@ -26,6 +26,9 @@ Usage:
     # Update firmware — V4 R8 (8 MB octal PSRAM); also chosen automatically on an R8
     python flash.py --board v4-r8
 
+    # Update firmware — V4 in the Expansion Kit with the touch screen (never auto-detected)
+    python flash.py --board v4-tft
+
     # Flash a specific Beta release version
     python flash.py --release v1.0.12
 
@@ -120,6 +123,23 @@ BOARD_PROFILES = {
                 "build_dir":    ".pio/build/rtnode_heltec_v4_r8",
                 "firmware_bin": "rtnode_heltec_v4_r8.bin",
                 "merged_bin":   "rtnode_heltec_v4_r8_merged.bin",
+            },
+        },
+    },
+    # V4 in Heltec's Expansion Kit with the touch screen: the screen replaces
+    # the OLED, so it needs its own build. Never auto-detected: the kit's V4
+    # looks like any other V4 (--board v4-tft).
+    "v4-tft": {
+        "name":      "Heltec V4 in the Expansion Kit (touch screen)",
+        "chip":      "ESP32-S3",
+        "baud_rate": "921600",
+        "flash_mode": "dio",
+        "flash_variants": {
+            "16MB": {
+                "pio_env":      "rtnode_heltec_v4_tft",
+                "build_dir":    ".pio/build/rtnode_heltec_v4_tft",
+                "firmware_bin": "rtnode_heltec_v4_tft.bin",
+                "merged_bin":   "rtnode_heltec_v4_tft_merged.bin",
             },
         },
     },
@@ -1266,6 +1286,8 @@ Examples:
       Download latest firmware and flash a V3 board.
   python flash.py --board v4-r8
       Flash the build for a V4 with 8 MB octal PSRAM (R8), detected or not.
+  python flash.py --board v4-tft
+      Flash the build for a V4 in the Expansion Kit with the touch screen.
   python flash.py --release v1.0.12
       Flash a specific Beta release tag.
   python flash.py --full
@@ -1282,10 +1304,11 @@ Examples:
       Erase flash first, then do a full flash.
         """,
     )
-    parser.add_argument("--board", choices=["v3", "v4", "v4-r8"], default=None,
-                        help="Target board: v3 (Heltec V3), v4 (Heltec V4: V4.2, V4.3) or "
-                             "v4-r8 (V4 with 8 MB octal PSRAM). "
-                             "Auto-detected from connected device if omitted.")
+    parser.add_argument("--board", choices=["v3", "v4", "v4-r8", "v4-tft"], default=None,
+                        help="Target board: v3 (Heltec V3), v4 (Heltec V4: V4.2, V4.3), "
+                             "v4-r8 (V4 with 8 MB octal PSRAM) or "
+                             "v4-tft (V4 in the Expansion Kit with the touch screen). "
+                             "Auto-detected from connected device if omitted; v4-tft never is.")
     parser.add_argument("--file", "-f", help="Path to firmware binary to flash")
     parser.add_argument("--port", "-p", help="Serial port (auto-detected if omitted)")
     parser.add_argument("--baud", "-b", default=None, help="Baud rate (board-specific default)")

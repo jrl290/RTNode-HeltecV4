@@ -616,7 +616,7 @@ void setup() {
     input_init();
   #endif
 
-  #if HAS_NP == false
+  #if HAS_NP == false && !defined(HELTEC_V4_TFT)  // the Expansion Kit build has no LED
     pinMode(pin_led_rx, OUTPUT);
     pinMode(pin_led_tx, OUTPUT);
     #ifdef FIREWALL_MODE
@@ -3379,6 +3379,9 @@ void sleep_now() {
           digitalWrite(LORA_PA_CSD, LOW);
           digitalWrite(LORA_PA_PWR_EN, LOW);
           digitalWrite(Vext, HIGH);
+          #if defined(HELTEC_V4_TFT)
+          digitalWrite(pin_tft_bl, LOW);
+          #endif
       #endif
       #if PIN_DISP_SLEEP >= 0
         pinMode(PIN_DISP_SLEEP, OUTPUT);
