@@ -328,12 +328,17 @@ bool display_init() {
       delay(50);
       Wire.begin(SDA_OLED, SCL_OLED);
     #elif BOARD_MODEL == BOARD_HELTEC32_V4 && defined(HELTEC_V4_TFT)
-      // enable vext / pin 36; backlight off until the screen is cleared
+      // enable vext; backlight off until the screen is cleared
       pinMode(Vext, OUTPUT);
       digitalWrite(Vext, LOW);
       delay(50);
       pinMode(pin_tft_bl, OUTPUT);
       digitalWrite(pin_tft_bl, LOW);
+      #if defined(HELTEC_V4_R8)
+        // Kit V2's SD card is on this bus: keep it deselected.
+        pinMode(pin_tft_sd_cs, OUTPUT);
+        digitalWrite(pin_tft_sd_cs, HIGH);
+      #endif
       tft_spi.begin(pin_tft_sck, -1, pin_tft_mosi, -1);
     #elif BOARD_MODEL == BOARD_HELTEC32_V4
       // enable vext / pin 36

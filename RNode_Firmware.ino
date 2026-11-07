@@ -1296,7 +1296,11 @@ void setup() {
       res::boot_report();
 #if defined(HELTEC_V4_R8)
       if (heltec_v4_r8()) {
+        #if defined(HELTEC_V4_TFT)
+        Serial.printf("[R8] octal PSRAM running (%u KB): R8 pins, Vext GPIO40, no LED\r\n",
+        #else
         Serial.printf("[R8] octal PSRAM running (%u KB): R8 pins, Vext GPIO40, LED GPIO46\r\n",
+        #endif
                       (unsigned)(ESP.getPsramSize() / 1024));
       } else {
         Serial.write("[R8] no octal PSRAM: not an R8, or its PSRAM did not start; V4 pins\r\n");

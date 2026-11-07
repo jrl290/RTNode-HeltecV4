@@ -334,8 +334,8 @@
 <main>
   <header>
     <h1><span>RT</span>Node Expansion Kit Test</h1>
-    <p>A test build for the Heltec V4 in Heltec's WiFi LoRa 32 Expansion Kit
-      (touch screen version). Flash it from your browser &mdash; no Python or tools required.</p>
+    <p>A test build for Heltec's WiFi LoRa 32 Expansion Kit, touch screen version: the first
+      kit or Kit V2. Flash it from your browser &mdash; no Python or tools required.</p>
   </header>
 
   <div class="test-note">
@@ -344,9 +344,11 @@
       shows the same two panels as the OLED, at twice the size: the node's name, frequency
       and address on top, the status icons below. Touch and the kit's buttons do nothing; the
       V4's own button works as usual.</p>
-    <p>It has not been run on a kit yet. On a bare V4 it runs normally and passes our tests,
-      so the radio, WiFi, Bluetooth and setup portal should behave as on any V4. On a V4
-      outside the kit its screen stays blank. For any other board, use the
+    <p>There are two kits with different boards, each with its own image. The page picks the
+      image from the board's memory: 2 MB for the first kit (a V4), 8 MB for Kit V2 (a V4 R8).</p>
+    <p>It has not been run on a kit yet. On bare boards it runs normally and passes our tests,
+      so the radio, WiFi, Bluetooth and setup portal should behave as on any V4. On a board
+      outside a kit the screen stays blank. For a board not in a kit, use the
       <a href="../">main flasher</a>.</p>
   </div>
 
@@ -404,6 +406,7 @@
       <p>Unplug and replug the kit after flashing. Then send these to us where you asked for
         this build:</p>
       <ol class="report-list">
+        <li>Which kit it chose: the first kit or Kit V2.</li>
         <li>A photo of the screen about 10 seconds after power-up, and one after setup once
           it's running.</li>
         <li>Is it the right way up, with the node's name, frequency and address on top and the
@@ -423,10 +426,16 @@
       <p>The page checks each image against its SHA-256 before writing it. The source is the
         <a href="https://github.com/jrl290/RTNode-HeltecV4/tree/feature/expansion-screen" target="_blank" rel="noopener">feature/expansion-screen</a>
         branch of RTNode, GPL-3 like the rest of RTNode.</p>
+      <p><strong>First kit (V4, 2 MB)</strong></p>
       <p><a href="firmware/rtnode_heltec_v4_tft_merged.bin">rtnode_heltec_v4_tft_merged.bin</a> (first install, at 0x0)<br>
         <code>f6d1ea7cb55bf7fb907f744892f8abd9ce03c364e96aa2ff663080865201039c</code></p>
       <p><a href="firmware/rtnode_heltec_v4_tft.bin">rtnode_heltec_v4_tft.bin</a> (update, at 0x10000)<br>
         <code>4eea50b13fefa5fc230e4d28b7914410715f98d74d90ad81c4497eb536e1e288</code></p>
+      <p><strong>Kit V2 (V4 R8, 8 MB)</strong></p>
+      <p><a href="firmware/rtnode_heltec_v4_r8_tft_merged.bin">rtnode_heltec_v4_r8_tft_merged.bin</a> (first install, at 0x0)<br>
+        <code>c3516d51c3f8444b9ae997f2e271d076df60730a514a9437a149a6058ecf24cb</code></p>
+      <p><a href="firmware/rtnode_heltec_v4_r8_tft.bin">rtnode_heltec_v4_r8_tft.bin</a> (update, at 0x10000)<br>
+        <code>f4e7c2355eda969e1d99298de18e3026ebd38277ae379b249526e82e4554cf1c</code></p>
     </div>
   </section>
 
@@ -474,22 +483,33 @@
 <script type="module">
   import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.4.6/bundle.js';
 
-  // ── Firmware config: the one test build this page offers ──────────────────
+  // ── Firmware config: one test image for each kit ──────────────────────────
   const FW = {
-    label:      'Heltec V4 in the Expansion Kit (touch screen)',
-    updateName: 'rtnode_heltec_v4_tft.bin',
-    fullName:   'rtnode_heltec_v4_tft_merged.bin',
-    updateAddr: 0x10000,
-    fullAddr:   0x0,
+    v4: {
+      label:      'Heltec V4 in the first Expansion Kit (touch screen)',
+      shortLabel: 'V4 with 2 MB, the first Expansion Kit',
+      updateName: 'rtnode_heltec_v4_tft.bin',
+      fullName:   'rtnode_heltec_v4_tft_merged.bin',
+    },
+    r8: {
+      label:      'Heltec V4 R8 in the Expansion Kit V2 (touch screen)',
+      shortLabel: 'V4 R8 with 8 MB, the Expansion Kit V2',
+      updateName: 'rtnode_heltec_v4_r8_tft.bin',
+      fullName:   'rtnode_heltec_v4_r8_tft_merged.bin',
+    },
   };
+  const UPDATE_ADDR = 0x10000;
+  const FULL_ADDR   = 0x0;
   const SHA256 = {
-    'rtnode_heltec_v4_tft.bin':        '4eea50b13fefa5fc230e4d28b7914410715f98d74d90ad81c4497eb536e1e288',
-    'rtnode_heltec_v4_tft_merged.bin': 'f6d1ea7cb55bf7fb907f744892f8abd9ce03c364e96aa2ff663080865201039c',
+    'rtnode_heltec_v4_tft.bin':           '4eea50b13fefa5fc230e4d28b7914410715f98d74d90ad81c4497eb536e1e288',
+    'rtnode_heltec_v4_tft_merged.bin':    'f6d1ea7cb55bf7fb907f744892f8abd9ce03c364e96aa2ff663080865201039c',
+    'rtnode_heltec_v4_r8_tft.bin':        'f4e7c2355eda969e1d99298de18e3026ebd38277ae379b249526e82e4554cf1c',
+    'rtnode_heltec_v4_r8_tft_merged.bin': 'c3516d51c3f8444b9ae997f2e271d076df60730a514a9437a149a6058ecf24cb',
   };
 
-  // ── Detection — the main flasher's rules, but only a standard V4 passes ────
-  // The kit ships with the 2 MB-PSRAM V4. A V3 has no PSRAM; a V4 R8 reports
-  // "Embedded PSRAM 8MB (AP_3v3)" and doesn't fit the kit.
+  // ── Detection — the main flasher's rules ───────────────────────────────────
+  // The first kit holds the 2 MB-PSRAM V4. Kit V2 holds the V4 R8, which reports
+  // "Embedded PSRAM 8MB (AP_3v3)". A V3 has no PSRAM.
   function detectKind(chipName, features) {
     if (!chipName.includes('ESP32-S3')) return 'other';
     const up = features.map(f => String(f).toUpperCase());
@@ -498,9 +518,8 @@
     return 'v3';
   }
   const NOT_FOR_THIS_BOARD = {
-    r8:    'This V4 has 8 MB PSRAM (a V4 R8). The Expansion Kit takes the standard V4, so this build is not for this board.',
-    v3:    'This looks like a Heltec V3 (no PSRAM). This build is only for the V4 in the Expansion Kit.',
-    other: 'This is not a Heltec V4. This build is only for the V4 in the Expansion Kit.',
+    v3:    'This looks like a Heltec V3 (no PSRAM). These builds are only for the board in an Expansion Kit.',
+    other: 'This is not a Heltec V4. These builds are only for the board in an Expansion Kit.',
   };
 
   // ── UI refs ────────────────────────────────────────────────────────────────
@@ -516,6 +535,7 @@
   const logArea      = document.getElementById('log-area');
 
   let currentIsUpdate = false;
+  let build     = null;
   let transport = null;
   let loader    = null;
 
@@ -560,6 +580,7 @@
   async function doDisconnect() {
     if (transport) { try { await transport.disconnect(); } catch (_) {} transport = null; }
     loader = null;
+    build  = null;
   }
   async function sha256Hex(bytes) {
     const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -598,15 +619,16 @@
       log(`Features:   ${features.join(', ')}`);
       log(`Flash size: ${flashSize}`);
 
-      if (kind !== 'v4') {
-        log('Board:      not a standard Heltec V4');
+      if (!FW[kind]) {
+        log('Board:      not a Heltec V4');
         setBadge('err', '&#10007; ' + NOT_FOR_THIS_BOARD[kind] +
           ' Use the <a href="../">main flasher</a> for other boards.');
         await doDisconnect();
         return;
       }
-      log(`Board:      ${FW.label}`);
-      setBadge('ok', `&#10003; Heltec V4 &mdash; Flash: ${flashSize} &mdash; Ready to flash`);
+      build = FW[kind];
+      log(`Board:      ${build.label}`);
+      setBadge('ok', `&#10003; ${build.shortLabel} &mdash; Flash: ${flashSize} &mdash; Ready to flash`);
       flashBtn.disabled = false;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -620,7 +642,7 @@
 
   // ── Step 2: Flash ──────────────────────────────────────────────────────────
   flashBtn.addEventListener('click', async () => {
-    if (!loader) {
+    if (!loader || !build) {
       setBadge('err', '&#10007; Detect your device first (Step 1).');
       return;
     }
@@ -631,11 +653,11 @@
     logArea.textContent = ''; logArea.style.display = 'block';
 
     try {
-      const name = currentIsUpdate ? FW.updateName : FW.fullName;
-      const addr = currentIsUpdate ? FW.updateAddr : FW.fullAddr;
+      const name = currentIsUpdate ? build.updateName : build.fullName;
+      const addr = currentIsUpdate ? UPDATE_ADDR : FULL_ADDR;
       const binUrl = `firmware/${name}`;
 
-      log(`Build:    ${FW.label} (test build, based on v1.0.54)`);
+      log(`Build:    ${build.label} (test build, based on v1.0.54)`);
       log(`Mode:     ${currentIsUpdate ? 'Update (app only, settings kept)' : 'First install (erase all)'}`);
       log(`Firmware: ${binUrl}`);
       const resp = await fetch(binUrl, { cache: 'no-cache' });

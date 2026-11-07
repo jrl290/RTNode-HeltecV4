@@ -89,19 +89,21 @@ range from it; v1.0.52 fixes this.
 #### V4 in the Expansion Kit (touch screen)
 
 Heltec's **WiFi LoRa 32 Expansion Kit** puts a V4 in a case with a 240×320
-colour touch screen (an ST7789 on SPI). The **`rtnode_heltec_v4_tft`** build
-shows the OLED's two panels on it at twice the size, stacked as on the V4's
-OLED. Touch and the kit's buttons are not used, except the V4's own button.
+colour touch screen (an ST7789 on SPI). There are two kits, each with its own
+build: the first kit holds a 2 MB V4 (**`rtnode_heltec_v4_tft`**), and Kit V2
+holds a V4 R8 (**`rtnode_heltec_v4_r8_tft`**). Both show the OLED's two panels
+on the screen at twice the size, stacked as on the V4's OLED. Touch and the
+kit's buttons are not used, except the V4's own button.
 
-- **Not yet run on a kit.** It has run on a bare V4.2 with no screen attached,
-  where the node and its contract tests behave as with the standard build.
-  What the screen shows (the right way up, white on black) is untested.
-- The screen takes the OLED's pins, so each build shows nothing on the other's
-  hardware. The node itself runs with either.
-- The V4's LED pin is the kit's second button, so this build has no LED.
-- The kit comes with a 2 MB V4; Heltec says it does not take an R8.
-- Neither flasher can tell the kit from a bare V4: choose it with
-  `flash.py --board v4-tft`.
+- **Not yet run on a kit.** Each has run on a bare board with no screen
+  attached, where the node and its contract tests behave as with the standard
+  build. What the screen shows (the right way up, white on black) is untested.
+- The screen replaces the OLED, so each build shows nothing on a bare board, and
+  the standard builds show nothing on a kit. The node itself runs with either.
+- Kit V2's screen pins are from Meshtastic's `heltec-v4-r8-tft` definition.
+- The board's LED pin is the kit's second button, so these builds have no LED.
+- Neither flasher can tell a kit from a bare board: choose with
+  `flash.py --board v4-tft` or `flash.py --board v4-r8-tft`.
 
 ## Quick Start
 
@@ -137,7 +139,8 @@ python flash.py --use-system-esptool
 python flash.py --board v3
 python flash.py --board v4
 python flash.py --board v4-r8   # V4 with 8 MB PSRAM (chosen automatically on an R8)
-python flash.py --board v4-tft  # V4 in the Expansion Kit with the touch screen
+python flash.py --board v4-tft  # V4 in the first Expansion Kit with the touch screen
+python flash.py --board v4-r8-tft  # V4 R8 in the Expansion Kit V2
 
 # Or flash a local binary
 python flash.py --file rtnode_heltec_v4.bin
@@ -166,8 +169,11 @@ pio run -e rtnode_heltec_v3
 # Build for V4 R8 (8 MB octal PSRAM)
 pio run -e rtnode_heltec_v4_r8
 
-# Build for a V4 in the Expansion Kit (touch screen)
+# Build for a V4 in the first Expansion Kit (touch screen)
 pio run -e rtnode_heltec_v4_tft
+
+# Build for a V4 R8 in the Expansion Kit V2 (touch screen)
+pio run -e rtnode_heltec_v4_r8_tft
 
 # Flash (via PlatformIO)
 pio run -e rtnode_heltec_v4 -t upload

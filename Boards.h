@@ -436,14 +436,15 @@
       #if defined(EXTERNAL_LEDS)
         const int pin_led_rx = 13;
         const int pin_led_tx = 14;
+      #elif defined(HELTEC_V4_TFT)
+        // In both Expansion Kits the board's LED pin (GPIO35 on a V4, GPIO46
+        // on an R8) is the kit's second button, so these builds have no LED
+        // and never drive the pin.
+        const int pin_led_rx = -1;
+        const int pin_led_tx = -1;
       #elif defined(HELTEC_V4_R8)
         #define pin_led_rx (heltec_v4_r8() ? 46 : 35)
         #define pin_led_tx (heltec_v4_r8() ? 46 : 35)
-      #elif defined(HELTEC_V4_TFT)
-        // In the Expansion Kit GPIO35, the V4's LED, is the kit's second
-        // button, so this build has no LED and never drives the pin.
-        const int pin_led_rx = -1;
-        const int pin_led_tx = -1;
       #else
         const int pin_led_rx = 35;
         const int pin_led_tx = 35;
@@ -491,7 +492,21 @@
       const int pin_miso = 11;
       const int pin_sclk = 9;
 
-      #if defined(HELTEC_V4_TFT)
+      #if defined(HELTEC_V4_TFT) && defined(HELTEC_V4_R8)
+        // Expansion Kit V2 touch screen (build rtnode_heltec_v4_r8_tft): the
+        // same 240x320 ST7789 on the second SPI bus, write only, on other
+        // pins because the R8's octal PSRAM takes GPIO33-37. The pins are
+        // Meshtastic's (heltec-v4-r8-tft). The SD card shares the bus, with
+        // its select on 3. Touch (I2C on 17/18) is not used.
+        const int pin_tft_sck   = 16;
+        const int pin_tft_mosi  = 15;
+        const int pin_tft_cs    = 47;
+        const int pin_tft_dc    = 48;
+        const int pin_tft_rst   = 21;
+        const int pin_tft_bl    = 44;
+        const int pin_tft_sd_cs = 3;
+        #define DISPLAY_SCALE 2
+      #elif defined(HELTEC_V4_TFT)
         // Expansion Kit touch screen (build rtnode_heltec_v4_tft): a 240x320
         // ST7789 on the second SPI bus, write only. It uses the OLED's pins
         // 17, 18 and 21, so this build has no OLED. Touch (I2C on 47/48,
